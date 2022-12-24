@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::lexer::{self, Token, TokenType, OperatorType};
 
 #[derive(PartialEq)]
