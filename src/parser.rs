@@ -1,5 +1,5 @@
 use crate::lexer::{self, Token, TokenType};
-use crate::node::{Node, NodeType, build_node, build_unary_node};
+use crate::node::{Node, build_node, build_unary_node};
 
 pub struct Parser {
     pos : usize,
