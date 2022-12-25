@@ -4,7 +4,12 @@ use crate::lexer::{Token, TokenType};
 pub enum NodeType {
     Literal,
     BinaryOperation,
-    UnaryOperation
+    UnaryOperation,
+    Program,
+    Statement,
+    MethodCall,
+    Symbol,
+    Assigment
 }
 
 pub struct Node {
@@ -69,11 +74,22 @@ impl Node {
     }
 }
 
+pub fn build_method_call_node(method_name: String, left: Option<Box<Node>>) -> Option<Box<Node>> {
+    return Some(Box::new(Node {
+        node_type: NodeType::MethodCall,
+        value: method_name,
+        left_handside: left,
+        right_handside: None
+    }));
+}
+
 pub fn build_node(token: &Token, left: Option<Box<Node>>, right: Option<Box<Node>>) -> Option<Box<Node>> {
     return Some(Box::new(Node {
         node_type: match token.token_type {
             TokenType::NumeralLiteral => NodeType::Literal,
             TokenType::Operator => NodeType::BinaryOperation,
+            TokenType::Assignment => NodeType::Assigment,
+            TokenType::Symbol => NodeType::Symbol,
             _ => panic!("Unexpected token type to process when building node.")
         },
         value: String::from(token.value.as_ref().unwrap()),
@@ -86,6 +102,24 @@ pub fn build_unary_node(token: &Token, node: Option<Box<Node>>) -> Option<Box<No
     return Some(Box::new(Node {
         node_type: NodeType::UnaryOperation,
         value: String::from(token.value.as_ref().unwrap()),
+        left_handside: node,
+        right_handside: None
+    }));
+}
+
+pub fn build_program_node(node: Option<Box<Node>>) -> Option<Box<Node>> {
+    return Some(Box::new(Node {
+        node_type: NodeType::Program,
+        value: "".to_string(),
+        left_handside: node,
+        right_handside: None
+    }));
+}
+
+pub fn build_statement_node(node: Option<Box<Node>>) -> Option<Box<Node>> {
+    return Some(Box::new(Node {
+        node_type: NodeType::Program,
+        value: "".to_string(),
         left_handside: node,
         right_handside: None
     }));

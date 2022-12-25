@@ -4,6 +4,10 @@ pub enum TokenType {
     NumeralLiteral,
     ParenthesisL,
     ParenthesisR,
+    Declaration,
+    Symbol,
+    Assignment,
+    EndOfstatement,
     Eof
 }
 
@@ -55,6 +59,12 @@ impl TokenParser {
         }
     }
 
+    fn token_parse_error(&self, message: String) -> ! {
+        let c = self.peek().unwrap();
+        eprintln!("{} '{}' at {}", message, c, self.pos);
+        std::process::exit(1)
+    }
+
     fn digest(&mut self) -> char {
         self.pos += 1;
         return self.program[self.pos-1];
@@ -65,17 +75,86 @@ impl TokenParser {
         }
         return None;
     }
+    fn peek_with_offset(&self, offset: usize) -> Option<char> {
+        let pos = self.pos+offset;
+        if pos < self.program.len() {
+            return Some(self.program[pos]);
+        }
+        return None;
+    }
     pub fn parse(&mut self) -> Vec<Token>{
         let mut tokens = vec![];
 
         while let Some(c) = self.peek() {
-            if c == ' ' {
+            if c == ' ' || c == '\n' {
                 self.digest();
+            }
+            else if c == ';' {
+                self.digest();
+                tokens.push(Token {
+                    start: self.pos-1,
+                    end: self.pos,
+                    token_type: TokenType::EndOfstatement,
+                    value: Some(";".to_string()),
+                    operator_type: None
+                })
+            }
+            else if c == '=' {
+                self.digest();
+                tokens.push(Token {
+                    start: self.pos-1,
+                    end: self.pos,
+                    token_type: TokenType::Assignment,
+                    value: Some("=".to_string()),
+                    operator_type: None
+                })
+            }
+            else if c == 'l' {
+                let pos = self.pos;
+                let d = self.peek_with_offset(1).unwrap();
+                let e = self.peek_with_offset(2).unwrap();
+                if d == 'e' && e == 't' {
+                    self.digest();
+                    self.digest();
+                    self.digest();
+                    tokens.push(Token {
+                        start: pos,
+                        end: self.pos,
+                        token_type: TokenType::Declaration,
+                        value: Some("let".to_string()),
+                        operator_type: None
+                    })
+                }
+            }
+            else if c.is_ascii_alphabetic() {
+                let pos = self.pos;
+                let mut symbol = format!("{}", self.digest());
+                while let Some(d) = self.peek() {
+                    if !d.is_ascii_alphanumeric() {
+                        break;
+                    }
+                    self.digest();
+                    symbol.push(d);
+                }
+                tokens.push(Token {
+                    start: pos,
+                    end: self.pos,
+                    token_type: TokenType::Symbol,
+                    value: Some(symbol),
+                    operator_type: None
+                })                
             }
             else if c.is_numeric() {
                 let pos = self.pos;
                 let mut number = format!("{}", self.digest());
+                let mut is_floating: bool = false;
                 while self.peek().unwrap_or_default().is_numeric() || self.peek().unwrap_or_default() == '.' {
+                    if self.peek().unwrap_or_default() == '.' {
+                        if is_floating {
+                            self.token_parse_error("Malformed number literal, found".to_string());
+                        }
+                        is_floating = true;
+                    }
                     number.push(self.digest());
                 }
                 tokens.push(Token {
@@ -89,17 +168,14 @@ impl TokenParser {
             else if c == '+' || c == '-' || c == '*' || c == '/' || c == '^' {
                 tokens.push(Token {
                     start: self.pos,
-                    end: self.pos,
+                    end: self.pos+1,
                     token_type: TokenType::Operator,
-                    operator_type: Some(match c {
-                        '+' | '-' => OperatorType::Additive,
-                        '*' | '/' => OperatorType::Factorial,
-                        '^'  => OperatorType::Exponential,
-                        _ => {
-                            eprintln!("Syntax error: unrecognized character '{}' at {}", c, self.pos);
-                            std::process::exit(1)
-                        }
-                    }),
+                    operator_type: match c {
+                        '+' | '-' => Some(OperatorType::Additive),
+                        '*' | '/' => Some(OperatorType::Factorial),
+                        '^'  => Some(OperatorType::Exponential),
+                        _ => None
+                    },
                     value: Some(format!("{}", c))
                 });
                 self.digest();
@@ -125,8 +201,7 @@ impl TokenParser {
                 self.digest();
             }
             else {
-                eprintln!("Syntax error: unrecognized character '{}' at {}", c, self.pos);
-                std::process::exit(1)
+                self.token_parse_error("Syntax error: unrecognized character".to_string());
             }
         }
         tokens.push(Token {
