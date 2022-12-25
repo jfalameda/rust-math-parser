@@ -80,7 +80,7 @@ fn error_unrecognized_token(token: &Token) {
 }
 
 impl Parser {
-    pub fn new(mut tokens: Vec<lexer::Token>) -> Self {
+    pub fn new(tokens: Vec<lexer::Token>) -> Self {
         Parser {
             pos: 0,
             tokens: tokens
@@ -152,8 +152,6 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, precedence: i32) -> Option<Box<Node>> {
-        let token = self.peek(None);
-        
         // Start parsing the expression with the lowest precedence and descend
         return self.parse_binary_expression(precedence);
     }
