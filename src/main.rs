@@ -1,5 +1,6 @@
 mod lexer;
 mod parser;
+mod node;
 
 fn main() {
     let program = String::from("-(2-3)*4+3^5+4+(-3+4^4)+5+6+2-1");
