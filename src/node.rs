@@ -1,3 +1,5 @@
+use crate::lexer::{Token, TokenType};
+
 #[derive(PartialEq)]
 pub enum NodeType {
     Literal,
@@ -65,4 +67,26 @@ impl Node {
         }
         return 0.0;
     }
+}
+
+pub fn build_node(token: &Token, left: Option<Box<Node>>, right: Option<Box<Node>>) -> Option<Box<Node>> {
+    return Some(Box::new(Node {
+        node_type: match token.token_type {
+            TokenType::NumeralLiteral => NodeType::Literal,
+            TokenType::Operator => NodeType::BinaryOperation,
+            _ => panic!("Unexpected token type to process when building node.")
+        },
+        value: String::from(token.value.as_ref().unwrap()),
+        left_handside: left,
+        right_handside: right
+    }));
+}
+
+pub fn build_unary_node(token: &Token, node: Option<Box<Node>>) -> Option<Box<Node>> {
+    return Some(Box::new(Node {
+        node_type: NodeType::UnaryOperation,
+        value: String::from(token.value.as_ref().unwrap()),
+        left_handside: node,
+        right_handside: None
+    }));
 }

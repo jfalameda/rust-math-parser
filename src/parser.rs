@@ -1,5 +1,5 @@
 use crate::lexer::{self, Token, TokenType};
-use crate::node::{Node, NodeType};
+use crate::node::{Node, NodeType, build_node, build_unary_node};
 
 pub struct Parser {
     pos : usize,
@@ -119,7 +119,7 @@ impl Parser {
             TokenType::Operator => {
                 if token.value.as_ref().unwrap() == "-" {
                     let literal = self.parse_term();
-                    return self.build_unary_node(token, literal);
+                    return build_unary_node(token, literal);
                 }
                 else {
                     error_unrecognized_token(token);
@@ -127,7 +127,7 @@ impl Parser {
                 }
             }
             TokenType::NumeralLiteral => {
-                return self.build_node(token, None, None)
+                return build_node(token, None, None)
             }
             TokenType::ParenthesisL => {
                 let expr = self.parse_expression(0);
