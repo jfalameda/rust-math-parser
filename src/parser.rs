@@ -61,28 +61,6 @@ impl Parser {
         return 0;
     }
 
-    fn build_node(&self, token: &Token, left: Option<Box<Node>>, right: Option<Box<Node>>) -> Option<Box<Node>> {
-        return Some(Box::new(Node {
-            node_type: match token.token_type {
-                TokenType::NumeralLiteral => NodeType::Literal,
-                TokenType::Operator => NodeType::BinaryOperation,
-                _ => panic!("Unexpected token type to process when building node.")
-            },
-            value: String::from(token.value.as_ref().unwrap()),
-            left_handside: left,
-            right_handside: right
-        }));
-    }
-
-    fn build_unary_node(&self, token: &Token, node: Option<Box<Node>>) -> Option<Box<Node>> {
-        return Some(Box::new(Node {
-            node_type: NodeType::UnaryOperation,
-            value: String::from(token.value.as_ref().unwrap()),
-            left_handside: node,
-            right_handside: None
-        }));
-    }
-
     fn parse_expression(&mut self, precedence: i32) -> Option<Box<Node>> {
         // Start parsing the expression with the lowest precedence and descend
         return self.parse_binary_expression(precedence);
@@ -102,7 +80,7 @@ impl Parser {
                 let op_precedence = self.get_current_operator_predecence();
                 self.digest(None);
                 let node = self.parse_expression(op_precedence);
-                left = self.build_node(&token, left, node);
+                left = build_node(&token, left, node);
             }
             else {
                 break;
