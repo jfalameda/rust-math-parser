@@ -44,19 +44,10 @@ impl Parser {
         return ast.unwrap().evaluate();
     }
 
-    fn operator_predecende(&self, operator: String) -> i32 {
-        match operator.as_str() {
-            "^" => 3,
-            "*" | "/" => 2,
-            "+" | "-" => 1,
-            _ => 0
-        }
-    }
-
     fn get_current_operator_predecence(&self) -> i32 {
         let op1 = self.peek(None);
         if op1.is_some() && op1.as_ref().unwrap().token_type == TokenType::Operator {
-            return self.operator_predecende(String::from(op1.as_ref().unwrap().value.as_ref().unwrap()));
+            return op1.unwrap().operator_predecende();
         }
         return 0;
     }

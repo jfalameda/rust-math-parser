@@ -23,6 +23,14 @@ pub struct Token {
 }
 
 impl Token {
+    pub fn operator_predecende(self) -> i32 {
+        match self.value.unwrap().as_str() {
+            "^" => 3,
+            "*" | "/" => 2,
+            "+" | "-" => 1,
+            _ => 0
+        }
+    }
     pub fn clone_token(&self) -> Token {
         return Token {
             start: self.start.clone(),
