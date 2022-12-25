@@ -18,8 +18,8 @@ let result = parser.evaluate();
 ```
 
 ## TODO
-- Prevent malformed floating numbers
 - Refactor for clarity
 - Write tests
 - Accept input from console
 - Exponential binary operations should be right-hand associative
+- If possible in rust, use 

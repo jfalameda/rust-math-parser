@@ -116,11 +116,11 @@ pub fn build_program_node(node: Option<Box<Node>>) -> Option<Box<Node>> {
     }));
 }
 
-pub fn build_statement_node(node: Option<Box<Node>>) -> Option<Box<Node>> {
+pub fn build_statement_node(left: Option<Box<Node>>, right: Option<Box<Node>>) -> Option<Box<Node>> {
     return Some(Box::new(Node {
         node_type: NodeType::Program,
         value: "".to_string(),
-        left_handside: node,
-        right_handside: None
+        left_handside: left,
+        right_handside: right
     }));
 }

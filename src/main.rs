@@ -1,6 +1,7 @@
 mod lexer;
 mod parser;
 mod node;
+mod interpreter;
 
 fn main() {
     let program = String::from("let a = (2-3)*4+3^5+4+(-3+4^4)+5+6+2-1; print(a);");

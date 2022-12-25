@@ -1,5 +1,3 @@
-use std::os::macos::raw::stat;
-
 use crate::lexer::{self, Token, TokenType};
 use crate::node::{Node, build_node, build_unary_node, build_program_node, build_statement_node, build_method_call_node};
 
@@ -8,7 +6,7 @@ pub struct Parser {
     tokens : Vec<lexer::Token> 
 }
 
-fn error_unrecognized_token(token: &Token) {
+fn error_unrecognized_token(token: &Token) -> ! {
     eprintln!("Syntax error: Unexpected token {} at character {}", token.value.as_ref().unwrap(), token.start);
     std::process::exit(1);
 }
@@ -17,7 +15,7 @@ impl Parser {
     pub fn new(tokens: Vec<lexer::Token>) -> Self {
         Parser {
             pos: 0,
-            tokens: tokens
+            tokens
         }
     }
 
@@ -28,7 +26,6 @@ impl Parser {
         let token = self.tokens.remove(0);
         if token_type.is_some() && token.token_type != token_type.unwrap() {
             error_unrecognized_token(&token);
-            std::process::exit(1)
         }
         return Some(token);
     }
@@ -55,7 +52,7 @@ impl Parser {
                 break;
             }
             let right = self.parse_statement();
-            statement = build_node(&token, statement, right);
+            statement = build_statement_node(statement, right);
             self.digest(Some(TokenType::EndOfstatement));
         }
 
@@ -84,9 +81,6 @@ impl Parser {
             }
             _ => error_unrecognized_token(&token)
         }
-        
-        let node = self.parse_expression(0);
-        return build_statement_node(node);
     }
 
     fn get_current_operator_predecence(&self) -> i32 {

@@ -89,6 +89,20 @@ impl TokenParser {
             if c == ' ' || c == '\n' {
                 self.digest();
             }
+            else if c == '/' {
+                let next = self.peek_with_offset(1).unwrap();
+                if next == '/' {
+                    self.digest();
+                    self.digest();
+                    while let Some(next) = self.peek() {
+                        if next == '\n' {
+                            self.digest();
+                            break;
+                        }
+                        self.digest();
+                    }
+                }
+            }
             else if c == ';' {
                 self.digest();
                 tokens.push(Token {
