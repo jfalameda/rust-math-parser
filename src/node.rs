@@ -20,6 +20,7 @@ pub struct Node {
 }
 
 impl Node {
+    #[allow(dead_code)]
     pub fn print(&self, level: i32) {
         let level_indent = (0..level).map(|_| "..").collect::<String>();
         if self.node_type == NodeType::BinaryOperation {
@@ -41,36 +42,6 @@ impl Node {
             println!("{} {}", level_indent, self.value);
         }
         return;
-    }
-
-    pub fn evaluate(&self) -> f32 {
-        if self.node_type == NodeType::Literal {
-            return self.value.parse::<f32>().unwrap();
-        }
-        else if self.node_type == NodeType::UnaryOperation {
-            return -1.0 * self.left_handside.as_ref().unwrap().evaluate();
-        }
-        else {
-            let left = self.left_handside.as_ref().unwrap().evaluate();
-            let right = self.right_handside.as_ref().unwrap().evaluate();
-            
-            if self.value == "^" {
-                return left.powf(right);
-            }
-            if self.value == "*" {
-                return left * right;
-            }
-            if self.value == "/" {
-                return left / right;
-            }
-            if self.value == "-" {
-                return left - right;
-            }
-            if self.value == "+" {
-                return left + right;
-            }
-        }
-        return 0.0;
     }
 }
 
@@ -118,7 +89,7 @@ pub fn build_program_node(node: Option<Box<Node>>) -> Option<Box<Node>> {
 
 pub fn build_statement_node(left: Option<Box<Node>>, right: Option<Box<Node>>) -> Option<Box<Node>> {
     return Some(Box::new(Node {
-        node_type: NodeType::Program,
+        node_type: NodeType::Statement,
         value: "".to_string(),
         left_handside: left,
         right_handside: right

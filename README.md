@@ -10,16 +10,24 @@ A math parser implemented using top-down operator precedence parsing.
 ## How to use it
 
 ```rust
-let program = String::from("-(2-3)*4+3^5+4+(-3+4^4)+5+6+2-1");
-let mut token_parser = lexer::TokenParser::new(program);
-let tokens = token_parser.parse();
-let mut parser = parser::Parser::new(tokens);
-let result = parser.evaluate();
+# cargo run program.rmp
+```
+
+## Syntax example
+
+```rust
+// Asign result to variable a
+let a = (2-3)*4+3^5+4+(-3+4^4)+5+6+2-1;
+let b = sin(10/5+a);
+let c = cos(30);
+
+// Print variable a
+println(a);
+println(b + c);
+
 ```
 
 ## TODO
 - Refactor for clarity
 - Write tests
-- Accept input from console
 - Exponential binary operations should be right-hand associative
-- If possible in rust, use 

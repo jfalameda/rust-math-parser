@@ -39,7 +39,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Option<Box<Node>> {
-        return self.parse_program();
+        return build_program_node(self.parse_program());
     }
 
     fn parse_program(&mut self) -> Option<Box<Node>> {
@@ -56,20 +56,15 @@ impl Parser {
             self.digest(Some(TokenType::EndOfstatement));
         }
 
-        return build_program_node(statement);
+        return statement;
     }
 
     fn parse_statement(&mut self) -> Option<Box<Node>> {
         let token = self.peek(None).unwrap();
 
         match token.token_type {
-            TokenType::Symbol => {
-                let method_name = self.digest(None).unwrap();
-                self.digest(Some(TokenType::ParenthesisL));
-                let expr = self.parse_expression(0);
-                self.digest(Some(TokenType::ParenthesisR));
-                
-                return build_method_call_node(method_name.value.unwrap(), expr);
+            TokenType::NumeralLiteral | TokenType::Operator | TokenType::Symbol => {
+                return self.parse_expression(0);
             }
             TokenType::Declaration => {
                 self.digest(None);
@@ -92,8 +87,20 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, precedence: i32) -> Option<Box<Node>> {
-        // Start parsing the expression with the lowest precedence and descend
-        return self.parse_binary_expression(precedence);
+        let token = self.peek(None).unwrap();
+        let next = self.peek(Some(self.pos+1)).unwrap();
+        if token.token_type == TokenType::Symbol && next.token_type == TokenType::ParenthesisL {
+            let method_name = self.digest(None).unwrap();
+            self.digest(Some(TokenType::ParenthesisL));
+            let expr = self.parse_expression(0);
+            self.digest(Some(TokenType::ParenthesisR));
+            
+            return build_method_call_node(method_name.value.unwrap(), expr);
+        }
+        else {
+            // Start parsing the expression with the lowest precedence and descend
+            return self.parse_binary_expression(precedence);
+        }
     }
 
     fn parse_binary_expression(&mut self, precedence: i32) -> Option<Box<Node>> {
@@ -126,7 +133,6 @@ impl Parser {
                 }
                 else {
                     error_unrecognized_token(token);
-                    return None;
                 }
             }
             TokenType::Symbol => {
@@ -136,13 +142,12 @@ impl Parser {
                 return build_node(token, None, None)
             }
             TokenType::ParenthesisL => {
-                let expr = self.parse_expression(0);
+                let expr = self.parse_statement();
                 self.digest(Some(TokenType::ParenthesisR));
                 return expr;
             }
             _ => {
                 error_unrecognized_token(token);
-                return None;
             }
         }
         
