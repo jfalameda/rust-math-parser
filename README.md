@@ -9,7 +9,7 @@ A math parser implemented using top-down operator precedence parsing.
 
 ## How to use it
 
-```rust
+```
 # cargo run program.rmp
 ```
 
