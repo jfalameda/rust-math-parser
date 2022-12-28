@@ -15,10 +15,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mut program_file = args.get(1);
     if program_file.is_none() {
-        //error("Program file is mandatory.".to_string());
+        error("Program file is mandatory.".to_string());
     }
-    let program = "program.rmp".to_string();
-    let file = args.get(1).unwrap_or(&program);
+    let file = args.get(1).unwrap();
     let program = fs::read_to_string(file)
         .expect("Invalid program name.");
 
