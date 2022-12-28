@@ -23,13 +23,13 @@ fn token_type_string(token_type: &TokenType) -> String {
 fn error_unexpected_token(token: &Token, expected_token_type: &TokenType) -> ! {
     let expected = token_type_string(expected_token_type);
     let found = token_type_string(&token.token_type);
-    eprintln!("Syntax error: Expected token {} at character {}, instead found {}", expected, token.start, found);
+    eprintln!("Syntax error: Expected token {} at line {} and character {}, instead found {}", expected, token.line, token.start, found);
     std::process::exit(1);
 }
 
 fn error_unrecognized_token(token: &Token,) -> ! {
     let found = token_type_string(&token.token_type);
-    eprintln!("Syntax error: Unrecognized token {} at character {}", found, token.start);
+    eprintln!("Syntax error: Unrecognized token {} at line {} and character {}", found, token.line, token.start);
     std::process::exit(1);
 }
 

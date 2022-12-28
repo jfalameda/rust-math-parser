@@ -21,6 +21,7 @@ pub enum OperatorType {
 pub struct Token {
     pub start: usize,
     pub end: usize,
+    pub line: usize,
     pub token_type: TokenType,
     pub operator_type: Option<OperatorType>,
     pub value: Option<String>
@@ -39,6 +40,7 @@ impl Token {
         return Token {
             start: self.start.clone(),
             end: self.end.clone(),
+            line: self.line.clone(),
             token_type: self.token_type.clone(),
             value: Some(self.value.as_ref().unwrap_or(&String::from("")).clone()),
             operator_type: self.operator_type.clone()
@@ -48,6 +50,8 @@ impl Token {
 
 pub struct TokenParser {
     pos : usize,
+    line_pos : usize,
+    line : usize,
     program : Vec<char>
 }
 
@@ -55,19 +59,29 @@ impl TokenParser {
     pub fn new(program: String) -> Self {
         TokenParser {
             pos: 0,
+            line_pos: 1,
+            line: 1,
             program: program.chars().collect()
         }
     }
 
     fn token_parse_error(&self, message: String) -> ! {
         let c = self.peek().unwrap();
-        eprintln!("{} '{}' at {}", message, c, self.pos);
+        eprintln!("{} '{}' at line {} and character {}", message, c, self.line, self.line_pos);
         std::process::exit(1)
     }
 
     fn digest(&mut self) -> char {
         self.pos += 1;
-        return self.program[self.pos-1];
+        let ch = self.program[self.pos-1];
+        if ch == '\n' {
+            self.line += 1;
+            self.line_pos = 1;
+        }
+        else {
+            self.line_pos += 1;
+        }
+        return ch;
     }
     fn peek(&self) -> Option<char> {
         if self.pos < self.program.len() {
@@ -106,8 +120,9 @@ impl TokenParser {
             else if c == ';' {
                 self.digest();
                 tokens.push(Token {
-                    start: self.pos-1,
-                    end: self.pos,
+                    start: self.line_pos-1,
+                    end: self.line_pos,
+                    line: self.line,
                     token_type: TokenType::EndOfstatement,
                     value: Some(";".to_string()),
                     operator_type: None
@@ -116,15 +131,16 @@ impl TokenParser {
             else if c == '=' {
                 self.digest();
                 tokens.push(Token {
-                    start: self.pos-1,
-                    end: self.pos,
+                    start: self.line_pos-1,
+                    end: self.line_pos,
+                    line: self.line,
                     token_type: TokenType::Assignment,
                     value: Some("=".to_string()),
                     operator_type: None
                 })
             }
             else if c == 'l' {
-                let pos = self.pos;
+                let pos = self.line_pos;
                 let d = self.peek_with_offset(1).unwrap();
                 let e = self.peek_with_offset(2).unwrap();
                 if d == 'e' && e == 't' {
@@ -133,7 +149,8 @@ impl TokenParser {
                     self.digest();
                     tokens.push(Token {
                         start: pos,
-                        end: self.pos,
+                        end: self.line_pos,
+                        line: self.line,
                         token_type: TokenType::Declaration,
                         value: Some("let".to_string()),
                         operator_type: None
@@ -141,7 +158,7 @@ impl TokenParser {
                 }
             }
             else if c.is_ascii_alphabetic() {
-                let pos = self.pos;
+                let pos = self.line_pos;
                 let mut symbol = format!("{}", self.digest());
                 while let Some(d) = self.peek() {
                     if !d.is_ascii_alphanumeric() {
@@ -152,14 +169,15 @@ impl TokenParser {
                 }
                 tokens.push(Token {
                     start: pos,
-                    end: self.pos,
+                    end: self.line_pos,
+                    line: self.line,
                     token_type: TokenType::Symbol,
                     value: Some(symbol),
                     operator_type: None
                 })                
             }
             else if c.is_numeric() {
-                let pos = self.pos;
+                let pos = self.line_pos;
                 let mut number = format!("{}", self.digest());
                 let mut is_floating: bool = false;
                 while self.peek().unwrap_or_default().is_numeric() || self.peek().unwrap_or_default() == '.' {
@@ -173,7 +191,8 @@ impl TokenParser {
                 }
                 tokens.push(Token {
                     start: pos,
-                    end: self.pos,
+                    end: self.line_pos,
+                    line: self.line,
                     token_type: TokenType::NumeralLiteral,
                     value: Some(number),
                     operator_type: None
@@ -181,8 +200,9 @@ impl TokenParser {
             }
             else if c == '+' || c == '-' || c == '*' || c == '/' || c == '^' {
                 tokens.push(Token {
-                    start: self.pos,
-                    end: self.pos+1,
+                    start: self.line_pos-1,
+                    end: self.line_pos,
+                    line: self.line,
                     token_type: TokenType::Operator,
                     operator_type: match c {
                         '+' | '-' => Some(OperatorType::Additive),
@@ -196,8 +216,9 @@ impl TokenParser {
             }
             else if c == '(' {
                 tokens.push(Token {
-                    start: self.pos,
-                    end: self.pos+1,
+                    start: self.line_pos-1,
+                    end: self.line_pos,
+                    line: self.line,
                     token_type: TokenType::ParenthesisL,
                     value: Some(format!("{}", c)),
                     operator_type: None
@@ -206,8 +227,9 @@ impl TokenParser {
             }
             else if c == ')' {
                 tokens.push(Token {
-                    start: self.pos,
-                    end: self.pos+1,
+                    start: self.line_pos-1,
+                    end: self.line_pos,
+                    line: self.line,
                     token_type: TokenType::ParenthesisR,
                     value: Some(format!("{}", c)),
                     operator_type: None
@@ -219,8 +241,9 @@ impl TokenParser {
             }
         }
         tokens.push(Token {
-            start: self.pos,
-            end: self.pos,
+            start: self.line_pos,
+            end: self.line_pos,
+            line: self.line,
             token_type: TokenType::Eof,
             value: None,
             operator_type: None
