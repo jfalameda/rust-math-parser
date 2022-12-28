@@ -31,3 +31,4 @@ println(b + c);
 - Refactor for clarity
 - Write tests
 - Exponential binary operations should be right-hand associative
+- Check for undefined variables
