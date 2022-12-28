@@ -14,11 +14,19 @@ fn error(error_message: String) -> ! {
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut program_file = args.get(1);
-    if program_file.is_none() {
-        error("Program file is mandatory.".to_string());
+    let file = "program.rmp".to_string();
+    if cfg!(debug_assertions) {
+        program_file = Some(&file);
     }
-    let file = args.get(1).unwrap();
-    let program = fs::read_to_string(file)
+    else {
+        if program_file.is_none() {
+            error("Program file is mandatory.".to_string());
+        }
+    }
+
+    let file_name = program_file.unwrap();
+    
+    let program = fs::read_to_string(file_name)
         .expect("Invalid program name.");
 
     let program = String::from(program);
