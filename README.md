@@ -23,6 +23,8 @@ let c = cos(30);
 
 // Print variable a
 println(a);
+
+// Print variable b
 println(b + c);
 
 ```
