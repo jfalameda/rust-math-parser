@@ -6,8 +6,30 @@ pub struct Parser {
     tokens : Vec<lexer::Token> 
 }
 
-fn error_unrecognized_token(token: &Token) -> ! {
-    eprintln!("Syntax error: Unexpected token {} at character {}", token.value.as_ref().unwrap(), token.start);
+fn token_type_string(token_type: &TokenType) -> String {
+    return match token_type {
+        TokenType::Assignment => "=".to_string(),
+        TokenType::Declaration => "let".to_string(),
+        TokenType::EndOfstatement => ";".to_string(),
+        TokenType::Eof => "EOF".to_string(),
+        TokenType::NumeralLiteral => "literal".to_string(),
+        TokenType::Operator => "operator".to_string(),
+        TokenType::ParenthesisL => "(".to_string(),
+        TokenType::ParenthesisR => ")".to_string(),
+        TokenType::Symbol => "symbol".to_string(),
+        _ => "".to_string()
+    }
+}
+fn error_unexpected_token(token: &Token, expected_token_type: &TokenType) -> ! {
+    let expected = token_type_string(expected_token_type);
+    let found = token_type_string(&token.token_type);
+    eprintln!("Syntax error: Expected token {} at character {}, instead found {}", expected, token.start, found);
+    std::process::exit(1);
+}
+
+fn error_unrecognized_token(token: &Token,) -> ! {
+    let found = token_type_string(&token.token_type);
+    eprintln!("Syntax error: Unrecognized token {} at character {}", found, token.start);
     std::process::exit(1);
 }
 
@@ -24,8 +46,11 @@ impl Parser {
             return None;
         }
         let token = self.tokens.remove(0);
-        if token_type.is_some() && token.token_type != token_type.unwrap() {
-            error_unrecognized_token(&token);
+        if token_type.is_some() {
+            let token_ref = token_type.as_ref().unwrap();
+            if token.token_type != *token_ref {
+                error_unexpected_token(&token, token_ref);
+            }
         }
         return Some(token);
     }

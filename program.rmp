@@ -8,4 +8,4 @@ let c = cos(30);
 println(a);
 
 // Print variable b
-println(b + c);
+println(b + c)
