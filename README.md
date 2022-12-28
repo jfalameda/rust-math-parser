@@ -15,7 +15,7 @@ A math parser implemented using top-down operator precedence parsing.
 
 ## Syntax example
 
-```javascript
+```js
 // Asign result to variable a
 let a = (2-3)*4+3^5+4+(-3+4^4)+5+6+2-1;
 
