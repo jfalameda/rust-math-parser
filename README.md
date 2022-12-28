@@ -34,3 +34,5 @@ println(b + c);
 - Write tests
 - Exponential binary operations should be right-hand associative
 - Check for undefined variables
+- Add line number to errors
+- Improve syntax errors
