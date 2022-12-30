@@ -37,3 +37,5 @@ println(b + c);
 - Check for undefined variables
 - Add line number to errors
 - Improve syntax errors
+- Use enums to describe nodes [https://gist.github.com/jfalameda/ce8e5ca1e9dda70986607693ffeea187](https://gist.github.com/jfalameda/ce8e5ca1e9dda70986607693ffeea187)
+- Remove RefCell usage
