@@ -39,3 +39,4 @@ println(b + c);
 - Improve syntax errors
 - Use enums to describe nodes [https://gist.github.com/jfalameda/ce8e5ca1e9dda70986607693ffeea187](https://gist.github.com/jfalameda/ce8e5ca1e9dda70986607693ffeea187)
 - Remove RefCell usage
+- Use peekabe iterable [https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html]()
