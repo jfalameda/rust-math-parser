@@ -31,12 +31,9 @@ println(b + c);
 ```
 
 ## TODO
-- Refactor for clarity
 - Write tests
 - Exponential binary operations should be right-hand associative
 - Check for undefined variables
 - Add line number to errors
 - Improve syntax errors
-- Use enums to describe nodes [https://gist.github.com/jfalameda/ce8e5ca1e9dda70986607693ffeea187](https://gist.github.com/jfalameda/ce8e5ca1e9dda70986607693ffeea187)
-- Remove RefCell usage
 - Use peekabe iterable [https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html](https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html)
