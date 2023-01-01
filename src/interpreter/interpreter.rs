@@ -25,7 +25,7 @@ impl Interpreter {
                 self.evaluate_program(program);
             },
             Expression::BinaryOperation(_, _, _) => {
-                //self.evaluate_program();
+                self.evaluate_expression(node_content);
             },
             Expression::Statement(_) | Expression::Declaration(_, _) | Expression::MethodCall(_) => self.evaluate_statement(node_content),
             _ => panic!("Unexpected AST node")
