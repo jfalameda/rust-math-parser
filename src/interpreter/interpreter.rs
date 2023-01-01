@@ -1,7 +1,5 @@
 use crate::node::{Expression, Identifier, Literal, Operator, MethodCall, Program};
 use std::collections::{HashMap};
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -10,14 +8,14 @@ static mut F32_VARIABLES: Lazy<Mutex<HashMap<String, f32>>> = Lazy::new(|| {
     Mutex::new(m)
 });
 
-pub struct NodeInterpreted {
+pub struct Interpreter {
     ast: Box<Expression>
 }
 
 
-impl NodeInterpreted {
+impl Interpreter {
     pub fn new(ast: Box<Expression>) -> Self {
-        NodeInterpreted { ast }
+        Interpreter { ast }
     }
 
     pub fn evaluate(&self, node: Option<&Box<Expression>>) {
@@ -99,14 +97,13 @@ impl NodeInterpreted {
         else if let Expression::Literal(literal) = node {
             // Preparing for having multiple types
             return match literal {
-                Literal::Float(f) => f.clone(),
-                _ => 0.0
+                Literal::Float(f) => f.clone()
             };
         }
         else if let Expression::MethodCall(method_call) = node {
             return self.evaluate_method_call(method_call);
         }
-        else if let Expression::UnaryOperation(op, expr) = node {
+        else if let Expression::UnaryOperation(_, expr) = node {
             // Assuming is minus unary operator
             return -1.0 * self.evaluate_expression(expr);
         }
@@ -121,7 +118,6 @@ impl NodeInterpreted {
                 Operator::Div => left * right,
                 Operator::Min => left - right,
                 Operator::Sum => left + right,
-                _ => panic!("Unrecognized operator")
             };
         }
         else {

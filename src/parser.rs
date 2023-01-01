@@ -16,8 +16,7 @@ fn token_type_string(token_type: &TokenType) -> String {
         TokenType::Operator => "operator".to_string(),
         TokenType::ParenthesisL => "(".to_string(),
         TokenType::ParenthesisR => ")".to_string(),
-        TokenType::Symbol => "symbol".to_string(),
-        _ => "".to_string()
+        TokenType::Symbol => "symbol".to_string()
     }
 }
 fn error_unexpected_token(token: &Token, expected_token_type: &TokenType) -> ! {
@@ -68,7 +67,7 @@ impl Parser {
     }
 
     fn parse_program(&mut self) -> Vec<Box<Expression>> {
-        let mut statement = self.parse_statement();
+        let statement = self.parse_statement();
         self.digest(Some(TokenType::EndOfstatement));
 
         let mut body = vec![statement];

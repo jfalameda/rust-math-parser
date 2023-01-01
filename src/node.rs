@@ -11,8 +11,7 @@ pub enum Operator {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum UnaryOperator {
-    Min,
-    Fac
+    Min
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -49,39 +48,6 @@ pub enum Expression {
     Identifier(Identifier),
     Declaration(Identifier, Box<Expression>)
 }
-
-/**pub struct Node {
-    pub node_type: NodeType,
-    pub value: String,
-    pub left_handside: Option<Box<Node>>,
-    pub right_handside: Option<Box<Node>>
-}
-
-impl Node {
-    #[allow(dead_code)]
-    pub fn print(&self, level: i32) {
-        let level_indent = (0..level).map(|_| "..").collect::<String>();
-        if self.node_type == NodeType::BinaryOperation {
-
-            let left = self.left_handside.as_ref();
-            let right = self.right_handside.as_ref();
-
-            if left.is_some() {
-                left.unwrap().print(level+1);
-            }
-            if self.node_type == NodeType::BinaryOperation {
-                println!("{} {}", level_indent, self.value);
-            }
-            if right.is_some() {
-                right.unwrap().print(level+1);
-            }
-        }
-        else {
-            println!("{} {}", level_indent, self.value);
-        }
-        return;
-    }
-}*/
 
 fn token_value_to_operator(value: String) -> Operator {
     return match value.as_str() {
@@ -127,7 +93,7 @@ pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Bo
 }
 
 // TODO: Check for the actual operator
-pub fn build_unary_node(token: &Token, node: Box<Expression>) -> Box<Expression> {
+pub fn build_unary_node(_: &Token, node: Box<Expression>) -> Box<Expression> {
     return Box::new(Expression::UnaryOperation(UnaryOperator::Min, node));
 }
 
