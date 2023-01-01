@@ -3,8 +3,9 @@ mod parser;
 mod node;
 mod interpreter;
 use std::{env, fs};
+use crate::interpreter::node_interpreted::NodeInterpreted;
+use crate::node::Expression;
 
-use interpreter::node_interpreted::NodeInterpreted;
 
 fn error(error_message: String) -> ! {
     eprintln!("{}", error_message.to_string());
@@ -34,6 +35,9 @@ fn main() {
     let tokens = token_parser.parse();
     let mut parser = parser::Parser::new(tokens);
     let ast = parser.parse();
-    ast.unwrap().evaluate();
 
+    let evaluator = NodeInterpreted::new(ast);
+    evaluator.evaluate(None);
+
+    println!("Finished");
 }

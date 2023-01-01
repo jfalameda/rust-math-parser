@@ -1,4 +1,4 @@
-use crate::node::{Node, NodeType};
+use crate::node::{Expression, Identifier, Literal, Operator, MethodCall, Program};
 use std::collections::{HashMap};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -10,81 +10,69 @@ static mut F32_VARIABLES: Lazy<Mutex<HashMap<String, f32>>> = Lazy::new(|| {
     Mutex::new(m)
 });
 
-pub trait NodeInterpreted {
-    fn evaluate(&self);
-
-    fn evaluate_program(&self);
-
-    fn evaluate_statement(&self);
-
-    fn evaluate_assignment(&self);
-
-    fn evaluate_method_call(&self, node: Rc<RefCell<&Node>>) -> f32;
-
-    fn evaluate_expression(&self, node: Rc<RefCell<&Node>>) -> f32;
+pub struct NodeInterpreted {
+    ast: Box<Expression>
 }
 
-impl NodeInterpreted for Node {
-    fn evaluate(&self) {
-        let node_content = &self;
-        match node_content.node_type {
-            NodeType::Program => {
-                self.evaluate_program();
+
+impl NodeInterpreted {
+    pub fn new(ast: Box<Expression>) -> Self {
+        NodeInterpreted { ast }
+    }
+
+    pub fn evaluate(&self, node: Option<&Box<Expression>>) {
+        let node_content = node.unwrap_or(&self.ast).as_ref();
+        match node_content {
+            Expression::Program(program) => {
+                self.evaluate_program(program);
             },
-            NodeType::BinaryOperation => {
-                self.evaluate_program();
+            Expression::BinaryOperation(_, _, _) => {
+                //self.evaluate_program();
             },
-            NodeType::Statement | NodeType::Assigment | NodeType::MethodCall => self.evaluate_statement(),
+            Expression::Statement(_) | Expression::Declaration(_, _) | Expression::MethodCall(_) => self.evaluate_statement(node_content),
             _ => panic!("Unexpected AST node")
         }
     }
 
-    fn evaluate_program(&self) {
-        let node_content = self.left_handside.as_ref().unwrap();
+    fn evaluate_program(&self, program: &Program) {
+        let statements = &program.body;
 
-        node_content.evaluate();
+        for statement in statements {
+            self.evaluate(Some(statement));
+        }
     }
 
-    fn evaluate_statement(&self) {
-        match self.node_type {
-            NodeType::Statement => {
-                if self.left_handside.is_some() {
-                    let left_ref = self.left_handside.as_ref().unwrap();
-                    left_ref.evaluate();
-                }
-                if self.right_handside.is_some() {
-                    let right_ref = self.right_handside.as_ref().unwrap();
-                    right_ref.evaluate();
-                }
+    fn evaluate_statement(&self, expression: &Expression) {
+        match expression {
+            Expression::Statement(expr) => {
+                self.evaluate(Some(expr));
             }
-            NodeType::Assigment => {
-                self.evaluate_assignment();
+            Expression::Declaration(identifier, expr) => {
+                self.evaluate_assignment(identifier, expr);
             },
-            NodeType::MethodCall => {
-                let node_ref = self;
-                let rc_node = Rc::new(RefCell::new(node_ref));
-                self.evaluate_method_call(rc_node.clone());
+            Expression::MethodCall(method_call) => {
+                self.evaluate_method_call(method_call);
             },
             _ => panic!("Unexpected AST node")
         }
     }
 
-    fn evaluate_assignment(&self) {
-        let node = self;
-        let symbol_name = node.left_handside.as_ref().unwrap().value.to_string();
-        let value_node = node.right_handside.as_ref().unwrap().as_ref();
-        let rc_node = Rc::new(RefCell::new(value_node));
-        let value = self.evaluate_expression(rc_node.clone());
+    fn evaluate_assignment(&self, identifier: &Identifier, expression: &Expression) {
+
+        let value = self.evaluate_expression(expression);
         unsafe {
-            F32_VARIABLES.lock().unwrap().insert(symbol_name, value);
+            F32_VARIABLES.lock().unwrap().insert(identifier.name.to_string(), value);
         }
     }
 
-    fn evaluate_method_call(&self, node: Rc<RefCell<&Node>>) -> f32 {
-        let node = node.borrow();
-        let rc_left = Rc::new(RefCell::new(node.left_handside.as_ref().unwrap().as_ref()));
-        let expr_result = self.evaluate_expression(rc_left.clone());
-        return match node.value.as_str() {
+    fn evaluate_method_call(&self, node: &MethodCall) -> f32 {
+
+        // Prepraring for having multiple arguments
+        let arg = node.arguments.get(0).unwrap();
+
+        let expr_result = self.evaluate_expression(arg);
+
+        return match node.identifier.name.as_str() {
             "print" => { 
                 print!("{}", expr_result);
                 0.0
@@ -99,49 +87,46 @@ impl NodeInterpreted for Node {
         }
     }
 
-    fn evaluate_expression(&self, node: Rc<RefCell<&Node>>) -> f32 {
-        let node_mut = node.borrow();
-        if node_mut.node_type == NodeType::Symbol {
-            let value = node_mut.value.to_string();
+    fn evaluate_expression(&self, node: &Expression) -> f32 {
+        if let Expression::Identifier(identifier) = node {
+            let value = identifier.name.to_string();
             let result: f32;
             unsafe {
                 result = F32_VARIABLES.lock().unwrap().get(&value).unwrap().clone();
             }
             return result;
         }
-        else if node_mut.node_type == NodeType::Literal {
-            return node_mut.value.parse::<f32>().unwrap();
+        else if let Expression::Literal(literal) = node {
+            // Preparing for having multiple types
+            return match literal {
+                Literal::Float(f) => f.clone(),
+                _ => 0.0
+            };
         }
-        else if node_mut.node_type == NodeType::MethodCall {
-            return self.evaluate_method_call(node.clone());
+        else if let Expression::MethodCall(method_call) = node {
+            return self.evaluate_method_call(method_call);
         }
-        else if node_mut.node_type == NodeType::UnaryOperation {
-            let rc_left = Rc::new(RefCell::new(node_mut.left_handside.as_ref().unwrap().as_ref()));
-            return -1.0 * self.evaluate_expression(rc_left.clone());
+        else if let Expression::UnaryOperation(op, expr) = node {
+            // Assuming is minus unary operator
+            return -1.0 * self.evaluate_expression(expr);
+        }
+        else if let Expression::BinaryOperation(left, op, right) = node {
+
+            let left = self.evaluate_expression(left);
+            let right = self.evaluate_expression(right);
+            
+            return match op {
+                Operator::Exp => left.powf(right),
+                Operator::Mul => left * right,
+                Operator::Div => left * right,
+                Operator::Min => left - right,
+                Operator::Sum => left + right,
+                _ => panic!("Unrecognized operator")
+            };
         }
         else {
-            let rc_left = Rc::new(RefCell::new(node_mut.left_handside.as_ref().unwrap().as_ref()));
-            let rc_right = Rc::new(RefCell::new(node_mut.right_handside.as_ref().unwrap().as_ref()));
-            let left = self.evaluate_expression(rc_left.clone());
-            let right = self.evaluate_expression(rc_right.clone());
-            
-            if node_mut.value == "^" {
-                return left.powf(right);
-            }
-            if node_mut.value == "*" {
-                return left * right;
-            }
-            if node_mut.value == "/" {
-                return left / right;
-            }
-            if node_mut.value == "-" {
-                return left - right;
-            }
-            if node_mut.value == "+" {
-                return left + right;
-            }
+            panic!("Unrecognized node");
         }
-        return 0.0;
     }
 
 }

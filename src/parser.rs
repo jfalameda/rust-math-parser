@@ -1,5 +1,5 @@
 use crate::lexer::{self, Token, TokenType};
-use crate::node::{Node, build_node, build_unary_node, build_program_node, build_statement_node, build_method_call_node};
+use crate::node::{Expression, build_node, build_unary_node, build_program_node, build_statement_node, build_method_call_node, build_assignment_node};
 
 pub struct Parser {
     pos : usize,
@@ -63,13 +63,15 @@ impl Parser {
         return None;
     }
 
-    pub fn parse(&mut self) -> Option<Box<Node>> {
+    pub fn parse(&mut self) -> Box<Expression> {
         return build_program_node(self.parse_program());
     }
 
-    fn parse_program(&mut self) -> Option<Box<Node>> {
+    fn parse_program(&mut self) -> Vec<Box<Expression>> {
         let mut statement = self.parse_statement();
         self.digest(Some(TokenType::EndOfstatement));
+
+        let mut body = vec![statement];
 
         while let Some(token) = self.peek(None) {
             if token.token_type == TokenType::Eof {
@@ -77,14 +79,14 @@ impl Parser {
                 break;
             }
             let right = self.parse_statement();
-            statement = build_statement_node(statement, right);
+            body.push(build_statement_node(right));
             self.digest(Some(TokenType::EndOfstatement));
         }
 
-        return statement;
+        return body;
     }
 
-    fn parse_statement(&mut self) -> Option<Box<Node>> {
+    fn parse_statement(&mut self) -> Box<Expression> {
         let token = self.peek(None).unwrap();
 
         match token.token_type {
@@ -94,10 +96,9 @@ impl Parser {
             TokenType::Declaration => {
                 self.digest(None);
                 let symbol = self.digest(Some(TokenType::Symbol)).unwrap();
-                let asignment_token = self.digest(Some(TokenType::Assignment)).unwrap();
+                self.digest(Some(TokenType::Assignment));
                 let expr = self.parse_expression(0);
-                let symbol_node = build_node(&symbol, None, None);
-                return build_node(&asignment_token, symbol_node, expr);
+                return build_assignment_node(symbol.value.unwrap(), expr);
             }
             _ => error_unrecognized_token(&token)
         }
@@ -111,7 +112,7 @@ impl Parser {
         return 0;
     }
 
-    fn parse_expression(&mut self, precedence: i32) -> Option<Box<Node>> {
+    fn parse_expression(&mut self, precedence: i32) -> Box<Expression> {
         let token = self.peek(None).unwrap();
         let next = self.peek(Some(self.pos+1)).unwrap();
         if token.token_type == TokenType::Symbol && next.token_type == TokenType::ParenthesisL {
@@ -128,7 +129,7 @@ impl Parser {
         }
     }
 
-    fn parse_binary_expression(&mut self, precedence: i32) -> Option<Box<Node>> {
+    fn parse_binary_expression(&mut self, precedence: i32) -> Box<Expression> {
         let mut left = self.parse_term();
         
         while precedence < self.get_current_operator_predecence() {
@@ -137,7 +138,7 @@ impl Parser {
                 let op_precedence = self.get_current_operator_predecence();
                 self.digest(None);
                 let node = self.parse_expression(op_precedence);
-                left = build_node(&token, left, node);
+                left = build_node(&token, Some(left), Some(node));
             }
             else {
                 break;
@@ -147,7 +148,7 @@ impl Parser {
         return left;
     }
 
-    fn parse_term(&mut self) -> Option<Box<Node>> {
+    fn parse_term(&mut self) -> Box<Expression> {
         let token = &self.digest(None).unwrap();
 
         match token.token_type {
