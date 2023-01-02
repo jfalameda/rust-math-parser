@@ -17,18 +17,18 @@ A math parser implemented using top-down operator precedence parsing.
 
 ```js
 // Asign result to variable a
-let a = (2-3)*4+3^5+4+(-3+4^4)+5+6+2-1;
-
-let b = sin(10/5+(a+2));
-let c = cos(30);
+let main_expr  = (2-3)*4+3^5+4+(-3+4^4)+5+6+2-1;
+let sin_result = sin(10/5+(main_expr+2));
+let cos_result = cos(30);
 
 // Print variable a
-println("Result a: ", a);
+println("Result main: ", main_expr);
 
-// Print variable b
-println(b + c);
+// Concatenation using + symbol
+println("Result sin(x): " + sin_result);
 
 println(str_concat("This ", "is ", "an ", "example"));
+
 
 ```
 
