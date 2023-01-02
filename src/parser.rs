@@ -17,7 +17,8 @@ fn token_type_string(token_type: &TokenType) -> String {
         TokenType::ParenthesisL => "(".to_string(),
         TokenType::ParenthesisR => ")".to_string(),
         TokenType::Symbol => "symbol".to_string(),
-        TokenType::ArgumentSeparator => ",".to_string()
+        TokenType::ArgumentSeparator => ",".to_string(),
+        TokenType::StringLiteral => "\"".to_string(),
     }
 }
 
@@ -100,7 +101,7 @@ impl Parser {
         let token = self.peek(None).unwrap();
 
         match token.token_type {
-            TokenType::NumeralLiteral | TokenType::Operator | TokenType::Symbol => {
+            TokenType::NumeralLiteral | TokenType::Operator | TokenType::Symbol | TokenType::StringLiteral=> {
                 return self.parse_expression(0);
             }
             TokenType::Declaration => {
@@ -187,6 +188,9 @@ impl Parser {
                 }
             }
             TokenType::Symbol => {
+                return build_node(token, None, None);
+            }
+            TokenType::StringLiteral => {
                 return build_node(token, None, None);
             }
             TokenType::NumeralLiteral => {

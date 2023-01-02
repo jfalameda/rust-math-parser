@@ -3,7 +3,9 @@ use std::collections::{HashMap};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
-static mut F32_VARIABLES: Lazy<Mutex<HashMap<String, f32>>> = Lazy::new(|| {
+use super::value::Value;
+
+static mut VARIABLES: Lazy<Mutex<HashMap<String, Value>>> = Lazy::new(|| {
     let m = HashMap::new();
     Mutex::new(m)
 });
@@ -59,54 +61,69 @@ impl Interpreter {
 
         let value = self.evaluate_expression(expression);
         unsafe {
-            F32_VARIABLES.lock().unwrap().insert(identifier.name.to_string(), value);
+            VARIABLES.lock().unwrap().insert(identifier.name.to_string(), value);
         }
     }
 
-    fn evaluate_method_call(&self, node: &MethodCall) -> f32 {
+    fn evaluate_method_call(&self, node: &MethodCall) -> Value {
 
         // Prepraring for having multiple arguments
-        let args : Vec<f32> = node.arguments
+        let args : Vec<Value> = node.arguments
             .iter()
             .map(|expr| self.evaluate_expression(expr))
             .collect();
 
         return match node.identifier.name.as_str() {
             "print" => {
-                let print = args.get(0).unwrap();
-                print!("{}", print);
-                0.0
+                args.iter().for_each(|arg| {
+                    print!("{}", arg.to_string());
+                });
+               
+                Value::Empty
             },
             "println" => { 
-                let print = args.get(0).unwrap();
-                println!("{}", print);
-                0.0
+                args.iter().for_each(|arg| {
+                    print!("{}", arg.to_string());
+                });
+                println!("");
+
+                Value::Empty
+            },
+            "str_concat" => {
+                let mut concat_str = String::from("");
+
+                args.iter().for_each(|arg| {
+                    concat_str.push_str(&arg.to_string());
+                });
+
+                return Value::String(concat_str);
             },
             "sin" => {
                 let number = args.get(0).unwrap();
-                return f32::sin(*number);
+                return Value::Float(f32::sin(number.to_number()));
             }
             "cos" => {
                 let number = args.get(0).unwrap();
-                return f32::cos(*number);
+                return Value::Float(f32::cos(number.to_number()));
             }
             _ => panic!("Unrecognized method name")
         }
     }
 
-    fn evaluate_expression(&self, node: &Expression) -> f32 {
+    fn evaluate_expression(&self, node: &Expression) -> Value {
         if let Expression::Identifier(identifier) = node {
             let value = identifier.name.to_string();
-            let result: f32;
+            let result: Value;
             unsafe {
-                result = F32_VARIABLES.lock().unwrap().get(&value).unwrap().clone();
+                result = VARIABLES.lock().unwrap().get(&value).unwrap().clone();
             }
             return result;
         }
         else if let Expression::Literal(literal) = node {
             // Preparing for having multiple types
             return match literal {
-                Literal::Float(f) => f.clone()
+                Literal::Float(f) => Value::Float(*f),
+                Literal::String(s) => Value::String(s.to_string())
             };
         }
         else if let Expression::MethodCall(method_call) = node {
@@ -114,20 +131,20 @@ impl Interpreter {
         }
         else if let Expression::UnaryOperation(_, expr) = node {
             // Assuming is minus unary operator
-            return -1.0 * self.evaluate_expression(expr);
+            return Value::Float(-1.0 * self.evaluate_expression(expr).to_number());
         }
         else if let Expression::BinaryOperation(left, op, right) = node {
 
             let left = self.evaluate_expression(left);
             let right = self.evaluate_expression(right);
             
-            return match op {
-                Operator::Exp => left.powf(right),
-                Operator::Mul => left * right,
-                Operator::Div => left * right,
-                Operator::Min => left - right,
-                Operator::Sum => left + right,
-            };
+            return Value::Float(match op {
+                Operator::Exp => left.to_number().powf(right.to_number()),
+                Operator::Mul => left.to_number() * right.to_number(),
+                Operator::Div => left.to_number() * right.to_number(),
+                Operator::Min => left.to_number() - right.to_number(),
+                Operator::Sum => left.to_number() + right.to_number(),
+            });
         }
         else {
             panic!("Unrecognized node");

@@ -9,6 +9,7 @@ pub enum TokenType {
     Assignment,
     EndOfstatement,
     ArgumentSeparator,
+    StringLiteral,
     Eof
 }
 
@@ -158,11 +159,32 @@ impl TokenParser {
                     })
                 }
             }
+            else if c == '"' {
+                let pos = self.line_pos;
+                self.digest();
+                let mut string : String = String::from("");
+                while let Some(d) = self.peek() {
+                    if d == '"' {
+                        self.digest();
+                        tokens.push(Token {
+                            start: pos,
+                            end: self.line_pos,
+                            line: self.line,
+                            token_type: TokenType::StringLiteral,
+                            value: Some(string),
+                            operator_type: None
+                        });
+                        break;
+                    }
+                    string.push(self.digest());
+                }
+                               
+            }
             else if c.is_ascii_alphabetic() {
                 let pos = self.line_pos;
                 let mut symbol = format!("{}", self.digest());
                 while let Some(d) = self.peek() {
-                    if !d.is_ascii_alphanumeric() {
+                    if !d.is_ascii_alphanumeric() && !(d == '_') {
                         break;
                     }
                     self.digest();

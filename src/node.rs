@@ -16,7 +16,8 @@ pub enum UnaryOperator {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
-    Float(f32)
+    Float(f32),
+    String(String)
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -85,6 +86,7 @@ pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Bo
     return
         match token.token_type {
             TokenType::NumeralLiteral => build_numerical_literal_node(Literal::Float(value.parse::<f32>().unwrap())),
+            TokenType::StringLiteral => build_numerical_literal_node(Literal::String(value.parse::<String>().unwrap())),
             TokenType::Operator => build_binary_op_node(token_value_to_operator(value), left.unwrap(), right.unwrap()),
             TokenType::Assignment => build_assignment_node(value, left.unwrap()),
             TokenType::Symbol => Box::new(Expression::Identifier(Identifier { name: value })),
