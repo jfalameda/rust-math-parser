@@ -19,14 +19,16 @@ A math parser implemented using top-down operator precedence parsing.
 // Asign result to variable a
 let a = (2-3)*4+3^5+4+(-3+4^4)+5+6+2-1;
 
-let b = sin(10/5+a);
+let b = sin(10/5+(a+2));
 let c = cos(30);
 
 // Print variable a
-println(a);
+println("Result a: ", a);
 
 // Print variable b
 println(b + c);
+
+println(str_concat("This ", "is ", "an ", "example"));
 
 ```
 

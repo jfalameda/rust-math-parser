@@ -140,15 +140,15 @@ impl Parser {
         let mut args = vec![];
 
         while let Some(token) = self.peek(None) {
-            if token.token_type == TokenType::ArgumentSeparator {
-                self.digest(None);
-                args.push(self.parse_expression(0));
-            }
-            else if token.token_type == TokenType::ParenthesisR {
+            if token.token_type == TokenType::ParenthesisR {
                 break;
             }
             else {
                 args.push(self.parse_expression(0));
+                let next = self.peek(None).unwrap();
+                if next.token_type != TokenType::ParenthesisR {
+                    self.digest(Some(TokenType::ArgumentSeparator));
+                }
             }
         }
 
