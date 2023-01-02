@@ -16,9 +16,11 @@ fn token_type_string(token_type: &TokenType) -> String {
         TokenType::Operator => "operator".to_string(),
         TokenType::ParenthesisL => "(".to_string(),
         TokenType::ParenthesisR => ")".to_string(),
-        TokenType::Symbol => "symbol".to_string()
+        TokenType::Symbol => "symbol".to_string(),
+        TokenType::ArgumentSeparator => ",".to_string()
     }
 }
+
 fn error_unexpected_token(token: &Token, expected_token_type: &TokenType) -> ! {
     let expected = token_type_string(expected_token_type);
     let found = token_type_string(&token.token_type);
@@ -62,6 +64,15 @@ impl Parser {
         return None;
     }
 
+    fn get_current_operator_predecence(&self) -> i32 {
+        let op1 = self.peek(None);
+        if op1.is_some() && op1.as_ref().unwrap().token_type == TokenType::Operator {
+            return op1.unwrap().operator_predecende();
+        }
+        return 0;
+    }
+
+
     pub fn parse(&mut self) -> Box<Expression> {
         return build_program_node(self.parse_program());
     }
@@ -103,29 +114,44 @@ impl Parser {
         }
     }
 
-    fn get_current_operator_predecence(&self) -> i32 {
-        let op1 = self.peek(None);
-        if op1.is_some() && op1.as_ref().unwrap().token_type == TokenType::Operator {
-            return op1.unwrap().operator_predecende();
-        }
-        return 0;
-    }
-
     fn parse_expression(&mut self, precedence: i32) -> Box<Expression> {
         let token = self.peek(None).unwrap();
         let next = self.peek(Some(self.pos+1)).unwrap();
         if token.token_type == TokenType::Symbol && next.token_type == TokenType::ParenthesisL {
-            let method_name = self.digest(None).unwrap();
-            self.digest(Some(TokenType::ParenthesisL));
-            let expr = self.parse_expression(0);
-            self.digest(Some(TokenType::ParenthesisR));
-            
-            return build_method_call_node(method_name.value.unwrap(), expr);
+            return self.parse_method_call();
         }
         else {
             // Start parsing the expression with the lowest precedence and descend
             return self.parse_binary_expression(precedence);
         }
+    }
+
+    fn parse_method_call(&mut self) -> Box<Expression> {
+        let method_name = self.digest(None).unwrap();
+        self.digest(Some(TokenType::ParenthesisL));
+        let args = self.parse_method_args();
+        self.digest(Some(TokenType::ParenthesisR));
+        
+        return build_method_call_node(method_name.value.unwrap(), args);
+    }
+
+    fn parse_method_args(&mut self) -> Vec<Box<Expression>> {
+        let mut args = vec![];
+
+        while let Some(token) = self.peek(None) {
+            if token.token_type == TokenType::ArgumentSeparator {
+                self.digest(None);
+                args.push(self.parse_expression(0));
+            }
+            else if token.token_type == TokenType::ParenthesisR {
+                break;
+            }
+            else {
+                args.push(self.parse_expression(0));
+            }
+        }
+
+        return args;
     }
 
     fn parse_binary_expression(&mut self, precedence: i32) -> Box<Expression> {

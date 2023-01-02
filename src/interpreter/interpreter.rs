@@ -66,21 +66,30 @@ impl Interpreter {
     fn evaluate_method_call(&self, node: &MethodCall) -> f32 {
 
         // Prepraring for having multiple arguments
-        let arg = node.arguments.get(0).unwrap();
-
-        let expr_result = self.evaluate_expression(arg);
+        let args : Vec<f32> = node.arguments
+            .iter()
+            .map(|expr| self.evaluate_expression(expr))
+            .collect();
 
         return match node.identifier.name.as_str() {
-            "print" => { 
-                print!("{}", expr_result);
+            "print" => {
+                let print = args.get(0).unwrap();
+                print!("{}", print);
                 0.0
             },
             "println" => { 
-                println!("{}", expr_result);
+                let print = args.get(0).unwrap();
+                println!("{}", print);
                 0.0
             },
-            "sin" => f32::sin(expr_result),
-            "cos" => f32::cos(expr_result),
+            "sin" => {
+                let number = args.get(0).unwrap();
+                return f32::sin(*number);
+            }
+            "cos" => {
+                let number = args.get(0).unwrap();
+                return f32::cos(*number);
+            }
             _ => panic!("Unrecognized method name")
         }
     }

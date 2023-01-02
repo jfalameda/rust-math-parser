@@ -8,6 +8,7 @@ pub enum TokenType {
     Symbol,
     Assignment,
     EndOfstatement,
+    ArgumentSeparator,
     Eof
 }
 
@@ -231,6 +232,17 @@ impl TokenParser {
                     end: self.line_pos,
                     line: self.line,
                     token_type: TokenType::ParenthesisR,
+                    value: Some(format!("{}", c)),
+                    operator_type: None
+                });
+                self.digest();
+            }
+            else if c == ',' {
+                tokens.push(Token {
+                    start: self.line_pos-1,
+                    end: self.line_pos,
+                    line: self.line,
+                    token_type: TokenType::ArgumentSeparator,
                     value: Some(format!("{}", c)),
                     operator_type: None
                 });
