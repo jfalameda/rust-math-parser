@@ -1,11 +1,9 @@
 use crate::node::{Expression, Identifier, Literal, Operator, MethodCall, Program};
-use std::collections::btree_map::Values;
 use std::collections::{HashMap};
-use std::io::{self, BufRead, Write};
-use std::io::stdout;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
+use super::methods::get_method;
 use super::value::{Value, Convert};
 
 static mut VARIABLES: Lazy<Mutex<HashMap<String, Value>>> = Lazy::new(|| {
@@ -76,69 +74,7 @@ impl Interpreter {
             .map(|expr| self.evaluate_expression(expr))
             .collect();
 
-        return match node.identifier.name.as_str() {
-            "print" => {
-                args.iter().for_each(|arg| {
-                    let str = String::convert(arg.to_string()).unwrap();
-                    print!("{}", str);
-                });
-               
-                Value::Empty
-            },
-            "to_number" => {
-                let value = args.get(0).unwrap();
-
-                value.convert_to_number()
-            }
-            "readln" => {
-                args.iter().for_each(|arg| {
-                    let str = String::convert(arg.to_string()).unwrap();
-                    print!("{}", str);
-                });
-
-                stdout().flush()
-                    .expect("Unable to flush");
-
-                let mut line = String::new();
-                let stdin = io::stdin();
-                stdin.lock().read_line(&mut line).unwrap();
-
-                // Remove last character
-                line.pop();
-                
-                Value::String(line)
-            }
-            "println" => {
-                args.iter().for_each(|arg| {
-                    let str = String::convert(arg.to_string()).unwrap();
-                    print!("{}", str);
-                });
-                println!("");
-
-                Value::Empty
-            },
-            "str_concat" => {
-                let mut concat_str = String::from("");
-
-                args.iter().for_each(|arg| {
-                    let str = String::convert(arg.to_string()).unwrap();
-                    concat_str.push_str(&str);
-                });
-
-                return Value::String(concat_str);
-            },
-            "sin" => {
-                let number = args.get(0).unwrap();
-                let number = f32::convert(number.to_number()).unwrap();
-                return Value::Float(f32::sin(number));
-            }
-            "cos" => {
-                let number = args.get(0).unwrap();
-                let number = f32::convert(number.to_number()).unwrap();
-                return Value::Float(f32::cos(number));
-            }
-            _ => panic!("Unrecognized method name")
-        }
+        return get_method(node.identifier.name.clone(), args);
     }
 
     fn evaluate_expression(&self, node: &Expression) -> Value {
