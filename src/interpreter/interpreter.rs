@@ -137,6 +137,14 @@ impl Interpreter {
 
             let left = self.evaluate_expression(left);
             let right = self.evaluate_expression(right);
+    
+            if matches!(left, Value::String(_)) || matches!(right, Value::String(_)) {
+                if matches!(op, Operator::Sum) {
+                    let mut left_str = left.to_string();
+                    left_str.push_str(&right.to_string());
+                    return Value::String(left_str);
+                }
+            }
             
             return Value::Float(match op {
                 Operator::Exp => left.to_number().powf(right.to_number()),

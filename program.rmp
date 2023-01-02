@@ -7,8 +7,7 @@ let c = cos(30);
 // Print variable a
 println("Result a: ", a);
 
-// Print variable b
-println(b + c);
+// Concatenation using + symbol
+println("Result b: " - b);
 
 println(str_concat("This ", "is ", "an ", "example"));
-
