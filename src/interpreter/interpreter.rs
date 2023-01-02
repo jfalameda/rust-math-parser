@@ -1,9 +1,12 @@
 use crate::node::{Expression, Identifier, Literal, Operator, MethodCall, Program};
+use std::collections::btree_map::Values;
 use std::collections::{HashMap};
+use std::io::{self, BufRead, Write};
+use std::io::stdout;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
-use super::value::Value;
+use super::value::{Value, Convert};
 
 static mut VARIABLES: Lazy<Mutex<HashMap<String, Value>>> = Lazy::new(|| {
     let m = HashMap::new();
@@ -76,14 +79,39 @@ impl Interpreter {
         return match node.identifier.name.as_str() {
             "print" => {
                 args.iter().for_each(|arg| {
-                    print!("{}", arg.to_string());
+                    let str = String::convert(arg.to_string()).unwrap();
+                    print!("{}", str);
                 });
                
                 Value::Empty
             },
-            "println" => { 
+            "to_number" => {
+                let value = args.get(0).unwrap();
+
+                value.convert_to_number()
+            }
+            "readln" => {
                 args.iter().for_each(|arg| {
-                    print!("{}", arg.to_string());
+                    let str = String::convert(arg.to_string()).unwrap();
+                    print!("{}", str);
+                });
+
+                stdout().flush()
+                    .expect("Unable to flush");
+
+                let mut line = String::new();
+                let stdin = io::stdin();
+                stdin.lock().read_line(&mut line).unwrap();
+
+                // Remove last character
+                line.pop();
+                
+                Value::String(line)
+            }
+            "println" => {
+                args.iter().for_each(|arg| {
+                    let str = String::convert(arg.to_string()).unwrap();
+                    print!("{}", str);
                 });
                 println!("");
 
@@ -93,18 +121,21 @@ impl Interpreter {
                 let mut concat_str = String::from("");
 
                 args.iter().for_each(|arg| {
-                    concat_str.push_str(&arg.to_string());
+                    let str = String::convert(arg.to_string()).unwrap();
+                    concat_str.push_str(&str);
                 });
 
                 return Value::String(concat_str);
             },
             "sin" => {
                 let number = args.get(0).unwrap();
-                return Value::Float(f32::sin(number.to_number()));
+                let number = f32::convert(number.to_number()).unwrap();
+                return Value::Float(f32::sin(number));
             }
             "cos" => {
                 let number = args.get(0).unwrap();
-                return Value::Float(f32::cos(number.to_number()));
+                let number = f32::convert(number.to_number()).unwrap();
+                return Value::Float(f32::cos(number));
             }
             _ => panic!("Unrecognized method name")
         }
@@ -131,7 +162,7 @@ impl Interpreter {
         }
         else if let Expression::UnaryOperation(_, expr) = node {
             // Assuming is minus unary operator
-            return Value::Float(-1.0 * self.evaluate_expression(expr).to_number());
+            return Value::Float(-1.0) * self.evaluate_expression(expr);
         }
         else if let Expression::BinaryOperation(left, op, right) = node {
 
@@ -140,19 +171,20 @@ impl Interpreter {
     
             if matches!(left, Value::String(_)) || matches!(right, Value::String(_)) {
                 if matches!(op, Operator::Sum) {
-                    let mut left_str = left.to_string();
-                    left_str.push_str(&right.to_string());
+                    let mut left_str = String::convert(left.to_string()).unwrap();
+                    let right = String::convert(right.to_string()).unwrap();
+                    left_str.push_str(&right);
                     return Value::String(left_str);
                 }
             }
             
-            return Value::Float(match op {
-                Operator::Exp => left.to_number().powf(right.to_number()),
-                Operator::Mul => left.to_number() * right.to_number(),
-                Operator::Div => left.to_number() * right.to_number(),
-                Operator::Min => left.to_number() - right.to_number(),
-                Operator::Sum => left.to_number() + right.to_number(),
-            });
+            return match op {
+                Operator::Exp => left.power(right),
+                Operator::Mul => left * right,
+                Operator::Div => left / right,
+                Operator::Min => left - right,
+                Operator::Sum => left + right,
+            };
         }
         else {
             panic!("Unrecognized node");
