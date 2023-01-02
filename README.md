@@ -21,6 +21,8 @@ let main_expr  = (2-3)*4+3^5+4+(-3+4^4)+5+6+2-1;
 let sin_result = sin(10/5+(main_expr+2));
 let cos_result = cos(30);
 
+let value = to_number(readln("Insert value: "));
+
 // Print variable a
 println("Result main: ", main_expr);
 
@@ -28,7 +30,6 @@ println("Result main: ", main_expr);
 println("Result sin(x): " + sin_result);
 
 println(str_concat("This ", "is ", "an ", "example"));
-
 
 ```
 
