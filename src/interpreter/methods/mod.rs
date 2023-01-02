@@ -4,6 +4,8 @@ mod readln;
 mod string;
 mod math;
 
+use crate::error;
+
 use self::math::{fn_sin, fn_cos};
 use self::println::fn_println;
 use self::print::fn_print;
@@ -22,6 +24,6 @@ pub fn get_method(method_name: String, args: Vec<Value>) -> Value {
         "to_number" => fn_to_number(args),
         "sin" => fn_sin(args),
         "cos" => fn_cos(args),
-        _ => panic!("Method not found: {}", method_name)
+        _ => error(format!("Method not found: {}",  method_name))
     }
 }

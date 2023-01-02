@@ -2,14 +2,10 @@ mod lexer;
 mod parser;
 mod node;
 mod interpreter;
+mod error;
 use std::{env, fs};
 use crate::interpreter::interpreter::Interpreter;
-
-
-fn error(error_message: String) -> ! {
-    eprintln!("{}", error_message.to_string());
-    std::process::exit(1);
-}
+use error::error;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

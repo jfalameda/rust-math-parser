@@ -1,4 +1,4 @@
-use crate::lexer::{Token, TokenType};
+use crate::{lexer::{Token, TokenType}, error};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
@@ -57,7 +57,7 @@ fn token_value_to_operator(value: String) -> Operator {
         "*" => Operator::Mul,
         "/" => Operator::Div,
         "^" => Operator::Exp,
-        _  => panic!("Unrecognized operator {}", value)
+        _  => error(format!("Unrecognized operator {}", value))
     };
 }
 

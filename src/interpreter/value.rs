@@ -1,5 +1,7 @@
 use std::ops;
 
+use crate::error;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Float(f32),
@@ -19,7 +21,7 @@ impl Value {
     pub fn to_number(&self) -> Value {
         match self {
             Value::Float(_) => self.clone(),
-            _ => panic!("Expected number value, found incompatible type.")
+            _ => error("Expected number value, found incompatible type.".to_string())
         }
     }
 
@@ -29,7 +31,7 @@ impl Value {
         let float  = val.parse::<f32>();
 
         if float.is_err() {
-            panic!("Unable to convert to number")
+            error(format!("Unable to convert {} to number", val))
         }
 
         return Value::Float(float.unwrap());

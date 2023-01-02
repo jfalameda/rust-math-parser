@@ -1,3 +1,4 @@
+use crate::error::error;
 use crate::node::{Expression, Identifier, Literal, Operator, MethodCall, Program};
 use std::collections::{HashMap};
 use std::sync::Mutex;
@@ -31,7 +32,7 @@ impl Interpreter {
                 self.evaluate_expression(node_content);
             },
             Expression::Statement(_) | Expression::Declaration(_, _) | Expression::MethodCall(_) => self.evaluate_statement(node_content),
-            _ => panic!("Unexpected AST node")
+            _ => error("Unexpected AST node.".to_string())
         }
     }
 
@@ -54,7 +55,7 @@ impl Interpreter {
             Expression::MethodCall(method_call) => {
                 self.evaluate_method_call(method_call);
             },
-            _ => panic!("Unexpected AST node")
+            _ => error("Unexpected AST node".to_string())
         }
     }
 
@@ -123,7 +124,7 @@ impl Interpreter {
             };
         }
         else {
-            panic!("Unrecognized node");
+            error("Unrecognized node".to_string());
         }
     }
 
