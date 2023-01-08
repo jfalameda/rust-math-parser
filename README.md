@@ -1,4 +1,4 @@
-# A simple math expressions parser written in rust
+# A simple programming language interpreter written in rust
 
 A math parser implemented using top-down operator precedence parsing.
 
