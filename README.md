@@ -1,6 +1,6 @@
 # A simple interpreter written in rust
 
-A math parser implemented using top-down operator precedence parsing.
+A parser implemented using top-down operator precedence parsing.
 
 ## How it works:
 
