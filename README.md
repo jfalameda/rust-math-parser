@@ -5,7 +5,7 @@ A math parser implemented using top-down operator precedence parsing.
 ## How it works:
 
 1. The input is sent to the lexer for lexical analysis
-2. The returned tokens are then passed to the parser. The parser creates an AST tree that can be evaluated to retrieve the result.
+2. The returned tokens are then passed to the parser. The parser creates an AST tree that can be evaluated.
 
 ## How to use it
 
