@@ -35,6 +35,7 @@ println(str_concat("This ", "is ", "an ", "example"));
 
 ## TODO
 - Write tests
+- Implement mechanism on the interpreter to check for mandatory function arguments
 - Exponential binary operations should be right-hand associative
 - Check for undefined variables
 - Add line number to errors
