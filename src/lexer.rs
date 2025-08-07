@@ -1,3 +1,7 @@
+use core::num;
+
+use crate::lexer_errors::LexerInvalidTokenError;
+
 #[derive(PartialEq, Clone)]
 pub enum TokenType {
     Operator,
@@ -85,6 +89,11 @@ impl TokenParser {
         }
         return ch;
     }
+    fn digest_n(&mut self, number_of_tokens: u32) -> String {
+        (0..number_of_tokens).map(|_| {
+            self.digest()
+        }).collect()
+    }
     fn peek(&self) -> Option<char> {
         if self.pos < self.program.len() {
             return Some(self.program[self.pos]);
@@ -98,7 +107,7 @@ impl TokenParser {
         }
         return None;
     }
-    pub fn parse(&mut self) -> Vec<Token>{
+    pub fn parse(&mut self) -> Result<Vec<Token>, LexerInvalidTokenError> {
         let mut tokens = vec![];
 
         while let Some(c) = self.peek() {
@@ -108,8 +117,7 @@ impl TokenParser {
             else if c == '/' && self.peek_with_offset(1).unwrap_or(' ') == '/' {
                 let next = self.peek_with_offset(1).unwrap();
                 if next == '/' {
-                    self.digest();
-                    self.digest();
+                    self.digest_n(2);
                     while let Some(next) = self.peek() {
                         if next == '\n' {
                             self.digest();
@@ -146,9 +154,7 @@ impl TokenParser {
                 let d = self.peek_with_offset(1).unwrap();
                 let e = self.peek_with_offset(2).unwrap();
                 if d == 'e' && e == 't' {
-                    self.digest();
-                    self.digest();
-                    self.digest();
+                    self.digest_n(3);
                     tokens.push(Token {
                         start: pos,
                         end: self.line_pos,
@@ -282,6 +288,6 @@ impl TokenParser {
             value: None,
             operator_type: None
         });
-        return tokens;
+        return Ok(tokens);
     }
 }
