@@ -1,6 +1,3 @@
-use core::num;
-use std::fmt;
-
 use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
 #[derive(PartialEq, Clone)]

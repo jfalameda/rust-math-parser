@@ -3,9 +3,7 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub enum LexerInvalidTokenKind {
     MalformedNumberLiteral(String),
-    UnexpectedToken(char),
-    UnexpectedEOF,
-    Custom(String), // catch-all
+    UnexpectedToken(char)
 }
 
 #[derive(Debug, Clone)]
@@ -24,8 +22,6 @@ impl fmt::Display for LexerInvalidTokenKind {
             LexerInvalidTokenKind::UnexpectedToken(c) => {
                 write!(f, "Syntax error: unexpected token '{}'", c)
             }
-            LexerInvalidTokenKind::UnexpectedEOF => write!(f, "Unexpected end of input"),
-            LexerInvalidTokenKind::Custom(msg) => write!(f, "{}", msg),
         }
     }
 }
