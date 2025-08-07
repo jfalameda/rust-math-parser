@@ -22,7 +22,7 @@ impl fmt::Display for LexerInvalidTokenKind {
                 write!(f, "Malformed number literal: '{}'", lit)
             }
             LexerInvalidTokenKind::UnexpectedToken(c) => {
-                write!(f, "Syntax error: unrecognized character '{}'", c)
+                write!(f, "Syntax error: unexpected token '{}'", c)
             }
             LexerInvalidTokenKind::UnexpectedEOF => write!(f, "Unexpected end of input"),
             LexerInvalidTokenKind::Custom(msg) => write!(f, "{}", msg),

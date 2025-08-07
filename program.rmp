@@ -7,7 +7,6 @@ let value = to_number(readln("Insert value: "));
 
 // Print variable a
 println("Result main: ", main_expr);
-
 // Concatenation using + symbol
 println("Result sin(x): " + sin_result);
 

@@ -1,6 +1,6 @@
 use core::num;
 
-use crate::lexer_errors::LexerInvalidTokenError;
+use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
 #[derive(PartialEq, Clone)]
 pub enum TokenType {
@@ -56,7 +56,7 @@ impl Token {
 
 pub struct TokenParser {
     pos : usize,
-    line_pos : usize,
+    column : usize,
     line : usize,
     program : Vec<char>
 }
@@ -65,16 +65,10 @@ impl TokenParser {
     pub fn new(program: String) -> Self {
         TokenParser {
             pos: 0,
-            line_pos: 1,
+            column: 1,
             line: 1,
             program: program.chars().collect()
         }
-    }
-
-    fn token_parse_error(&self, message: String) -> ! {
-        let c = self.peek().unwrap();
-        eprintln!("{} '{}' at line {} and character {}", message, c, self.line, self.line_pos);
-        std::process::exit(1)
     }
 
     fn digest(&mut self) -> char {
@@ -82,10 +76,10 @@ impl TokenParser {
         let ch = self.program[self.pos-1];
         if ch == '\n' {
             self.line += 1;
-            self.line_pos = 1;
+            self.column = 1;
         }
         else {
-            self.line_pos += 1;
+            self.column += 1;
         }
         return ch;
     }
@@ -130,8 +124,8 @@ impl TokenParser {
             else if c == ';' {
                 self.digest();
                 tokens.push(Token {
-                    start: self.line_pos-1,
-                    end: self.line_pos,
+                    start: self.column-1,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::EndOfstatement,
                     value: Some(";".to_string()),
@@ -141,8 +135,8 @@ impl TokenParser {
             else if c == '=' {
                 self.digest();
                 tokens.push(Token {
-                    start: self.line_pos-1,
-                    end: self.line_pos,
+                    start: self.column-1,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::Assignment,
                     value: Some("=".to_string()),
@@ -150,14 +144,14 @@ impl TokenParser {
                 })
             }
             else if c == 'l' {
-                let pos = self.line_pos;
+                let pos = self.column;
                 let d = self.peek_with_offset(1).unwrap();
                 let e = self.peek_with_offset(2).unwrap();
                 if d == 'e' && e == 't' {
                     self.digest_n(3);
                     tokens.push(Token {
                         start: pos,
-                        end: self.line_pos,
+                        end: self.column,
                         line: self.line,
                         token_type: TokenType::Declaration,
                         value: Some("let".to_string()),
@@ -166,7 +160,7 @@ impl TokenParser {
                 }
             }
             else if c == '"' {
-                let pos = self.line_pos;
+                let pos = self.column;
                 self.digest();
                 let mut string : String = String::from("");
                 while let Some(d) = self.peek() {
@@ -174,7 +168,7 @@ impl TokenParser {
                         self.digest();
                         tokens.push(Token {
                             start: pos,
-                            end: self.line_pos,
+                            end: self.column,
                             line: self.line,
                             token_type: TokenType::StringLiteral,
                             value: Some(string),
@@ -187,7 +181,7 @@ impl TokenParser {
                                
             }
             else if c.is_ascii_alphabetic() {
-                let pos = self.line_pos;
+                let pos = self.column;
                 let mut symbol = format!("{}", self.digest());
                 while let Some(d) = self.peek() {
                     if !d.is_ascii_alphanumeric() && !(d == '_') {
@@ -198,7 +192,7 @@ impl TokenParser {
                 }
                 tokens.push(Token {
                     start: pos,
-                    end: self.line_pos,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::Symbol,
                     value: Some(symbol),
@@ -206,13 +200,19 @@ impl TokenParser {
                 })                
             }
             else if c.is_numeric() {
-                let pos = self.line_pos;
+                let pos = self.column;
                 let mut number = format!("{}", self.digest());
                 let mut is_floating: bool = false;
                 while self.peek().unwrap_or_default().is_numeric() || self.peek().unwrap_or_default() == '.' {
                     if self.peek().unwrap_or_default() == '.' {
                         if is_floating {
-                            self.token_parse_error("Malformed number literal, found".to_string());
+                            number.push(self.digest());
+
+                            return Err(LexerInvalidTokenError {
+                                kind: LexerInvalidTokenKind::MalformedNumberLiteral(number),
+                                line: self.line,
+                                column: self.column,
+                            });
                         }
                         is_floating = true;
                     }
@@ -220,7 +220,7 @@ impl TokenParser {
                 }
                 tokens.push(Token {
                     start: pos,
-                    end: self.line_pos,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::NumeralLiteral,
                     value: Some(number),
@@ -229,8 +229,8 @@ impl TokenParser {
             }
             else if c == '+' || c == '-' || c == '*' || c == '/' || c == '^' {
                 tokens.push(Token {
-                    start: self.line_pos-1,
-                    end: self.line_pos,
+                    start: self.column-1,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::Operator,
                     operator_type: match c {
@@ -245,8 +245,8 @@ impl TokenParser {
             }
             else if c == '(' {
                 tokens.push(Token {
-                    start: self.line_pos-1,
-                    end: self.line_pos,
+                    start: self.column-1,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::ParenthesisL,
                     value: Some(format!("{}", c)),
@@ -256,8 +256,8 @@ impl TokenParser {
             }
             else if c == ')' {
                 tokens.push(Token {
-                    start: self.line_pos-1,
-                    end: self.line_pos,
+                    start: self.column-1,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::ParenthesisR,
                     value: Some(format!("{}", c)),
@@ -267,8 +267,8 @@ impl TokenParser {
             }
             else if c == ',' {
                 tokens.push(Token {
-                    start: self.line_pos-1,
-                    end: self.line_pos,
+                    start: self.column-1,
+                    end: self.column,
                     line: self.line,
                     token_type: TokenType::ArgumentSeparator,
                     value: Some(format!("{}", c)),
@@ -277,12 +277,16 @@ impl TokenParser {
                 self.digest();
             }
             else {
-                self.token_parse_error("Syntax error: unrecognized character".to_string());
+                return Err(LexerInvalidTokenError {
+                    kind: LexerInvalidTokenKind::UnexpectedToken(c),
+                    line: self.line,
+                    column: self.column,
+                });
             }
         }
         tokens.push(Token {
-            start: self.line_pos,
-            end: self.line_pos,
+            start: self.column,
+            end: self.column,
             line: self.line,
             token_type: TokenType::Eof,
             value: None,
