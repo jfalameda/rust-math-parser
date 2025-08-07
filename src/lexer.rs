@@ -1,4 +1,5 @@
 use core::num;
+use std::fmt;
 
 use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
@@ -15,6 +16,24 @@ pub enum TokenType {
     ArgumentSeparator,
     StringLiteral,
     Eof
+}
+
+impl ToString for TokenType {
+    fn to_string(&self) -> String {
+        match self {
+            TokenType::Assignment => "=",
+            TokenType::Declaration => "let",
+            TokenType::EndOfstatement => ";",
+            TokenType::Eof => "EOF",
+            TokenType::NumeralLiteral => "literal",
+            TokenType::Operator => "operator",
+            TokenType::ParenthesisL => "(",
+            TokenType::ParenthesisR => ")",
+            TokenType::Symbol => "symbol",
+            TokenType::ArgumentSeparator => ",",
+            TokenType::StringLiteral => "\"",
+        }.to_string()
+    }
 }
 
 #[derive(PartialEq, Clone)]
