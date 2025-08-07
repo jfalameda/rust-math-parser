@@ -1,6 +1,8 @@
+use std::{ffi::os_str::Display, fmt};
+
 use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
     Operator,
     NumeralLiteral,
@@ -18,17 +20,17 @@ pub enum TokenType {
 impl ToString for TokenType {
     fn to_string(&self) -> String {
         match self {
-            TokenType::Assignment => "=",
-            TokenType::Declaration => "let",
-            TokenType::EndOfstatement => ";",
-            TokenType::Eof => "EOF",
-            TokenType::NumeralLiteral => "literal",
-            TokenType::Operator => "operator",
-            TokenType::ParenthesisL => "(",
-            TokenType::ParenthesisR => ")",
-            TokenType::Symbol => "symbol",
-            TokenType::ArgumentSeparator => ",",
-            TokenType::StringLiteral => "\"",
+            TokenType::Operator => "Operator",
+            TokenType::NumeralLiteral => "NumeralLiteral",
+            TokenType::ParenthesisL => "ParanthesisL",
+            TokenType::ParenthesisR => "ParanthesisR",
+            TokenType::Declaration => "Declaration",
+            TokenType::Symbol => "Symbol",
+            TokenType::Assignment => "Assingment",
+            TokenType::EndOfstatement=> "EndOfStatement",
+            TokenType::ArgumentSeparator => "ArgumentSeparator",
+            TokenType::StringLiteral => "StringLiteral",
+            TokenType::Eof => "Eof"
         }.to_string()
     }
 }
@@ -309,5 +311,82 @@ impl TokenParser {
             operator_type: None
         });
         return Ok(tokens);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+
+    use super::*;
+
+    fn parse_program(program: String) -> Result<Vec<Token>, LexerInvalidTokenError> {
+        let mut parser = TokenParser::new(program.to_string());
+        parser.parse()
+    }
+
+    #[test]
+    fn parses_numerical_values() -> Result<(), Box<dyn Error>>{
+
+        let numbers = ["1", "100", "200", "123", "12340345", "0.1", "1.001", "100.12"];
+
+        for &number in numbers.iter() {
+            let result = parse_program(number.to_string());
+            let token = result?.first().ok_or("List was empty")?.token_type.clone();
+            assert!(
+                matches!(token, TokenType::NumeralLiteral),
+                "The token must be a NumeralLiteral, {} was found",
+                token.to_string()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn malformed_numerical_values_should_not_pass() -> Result<(), Box<dyn Error>>{
+        let result: Result<Vec<Token>, LexerInvalidTokenError> = parse_program(String::from("10..1"));
+
+        if let Err(LexerInvalidTokenError {
+            kind: LexerInvalidTokenKind::MalformedNumberLiteral(ref literal),
+        ..
+        }) = result {
+            assert_eq!(literal, "10..", "Lexer ingested invalid tokens");
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn expressions_are_properly_parsed() -> Result<(), Box<dyn Error>>{
+        let test_cases  = [
+            (
+                "1+2+3",
+                vec![
+                    TokenType::NumeralLiteral,
+                    TokenType::Operator,
+                    TokenType::NumeralLiteral,
+                    TokenType::Operator,
+                    TokenType::NumeralLiteral,
+                    TokenType::Eof
+                ]
+            )
+        ];
+
+        for (program, expected_tokens) in test_cases.iter() {
+            let tokens = parse_program(program.to_string())?;
+
+            let actual_token_types: Vec<TokenType> = tokens.iter().map(|t| t.token_type.clone()).collect();
+
+            assert_eq!(
+                actual_token_types,
+                *expected_tokens,
+                "Token mismatch for input: {}",
+                program
+            );
+        }
+
+        Ok(())
     }
 }
