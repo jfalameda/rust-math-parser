@@ -40,4 +40,5 @@ println(str_concat("This ", "is ", "an ", "example"));
 - Check for undefined variables
 - Add line number to errors
 - Improve syntax errors
+- Add runtime errors
 - Use peekabe iterable [https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html](https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html)
