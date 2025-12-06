@@ -1,22 +1,25 @@
+
+
 use crate::lexer::{self, Token, TokenType};
 use crate::node::{Expression, build_node, build_unary_node, build_program_node, build_statement_node, build_method_call_node, build_assignment_node};
+use crate::parser_errors::{ParserError, ParserErrorKind};
 
 pub struct Parser {
     pos : usize,
     tokens : Vec<lexer::Token> 
 }
 
-fn error_unexpected_token(token: &Token, expected_token_type: &TokenType) -> ! {
-    let expected = expected_token_type.to_string();
-    let found = &token.token_type.to_string();
-    eprintln!("Syntax error: Expected token {} at line {} and character {}, instead found {}", expected, token.line, token.start, found);
-    std::process::exit(1);
+fn error_unexpected_token(token: &Token, expected_token_type: &TokenType) -> ParserError {
+    ParserError { kind: ParserErrorKind::UnexpectedToken(
+        expected_token_type.to_string(),
+        token.clone()
+    )}
 }
 
-fn error_unrecognized_token(token: &Token,) -> ! {
-    let found = &token.token_type.to_string();
-    eprintln!("Syntax error: Unrecognized token {} at line {} and character {}", found, token.line, token.start);
-    std::process::exit(1);
+fn error_unrecognized_token(token: &Token,) -> ParserError {
+    ParserError { kind: ParserErrorKind::Unrecognizedtoken(
+        token.clone()
+    )}
 }
 
 impl Parser {
@@ -58,12 +61,12 @@ impl Parser {
     }
 
 
-    pub fn parse(&mut self) -> Box<Expression> {
-        return build_program_node(self.parse_program());
+    pub fn parse(&mut self) -> Result<Box<Expression>, ParserError> {
+        Ok(build_program_node(self.parse_program()?))
     }
 
-    fn parse_program(&mut self) -> Vec<Box<Expression>> {
-        let statement = self.parse_statement();
+    fn parse_program(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {
+        let statement = self.parse_statement()?;
         self.digest(Some(TokenType::EndOfstatement));
 
         let mut body = vec![statement];
@@ -73,37 +76,37 @@ impl Parser {
                 self.digest(None);
                 break;
             }
-            let right = self.parse_statement();
+            let right = self.parse_statement()?;
             body.push(build_statement_node(right));
             self.digest(Some(TokenType::EndOfstatement));
         }
 
-        return body;
+        Ok(body)
     }
 
-    fn parse_statement(&mut self) -> Box<Expression> {
+    fn parse_statement(&mut self) -> Result<Box<Expression>, ParserError> {
         let token = self.peek(None).unwrap();
 
         match token.token_type {
             TokenType::NumeralLiteral | TokenType::Operator | TokenType::Symbol | TokenType::StringLiteral=> {
-                return self.parse_expression(0);
+                return Ok(self.parse_expression(0)?);
             }
             TokenType::Declaration => {
                 self.digest(None);
                 let symbol = self.digest(Some(TokenType::Symbol)).unwrap();
                 self.digest(Some(TokenType::Assignment));
-                let expr = self.parse_expression(0);
-                return build_assignment_node(symbol.value.unwrap(), expr);
+                let expr = self.parse_expression(0)?;
+                return Ok(build_assignment_node(symbol.value.unwrap(), expr));
             }
-            _ => error_unrecognized_token(&token)
+            _ => return Err(error_unrecognized_token(&token))
         }
     }
 
-    fn parse_expression(&mut self, precedence: i32) -> Box<Expression> {
+    fn parse_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError> {
         let token = self.peek(None).unwrap();
         let next = self.peek(Some(self.pos+1)).unwrap();
         if token.token_type == TokenType::Symbol && next.token_type == TokenType::ParenthesisL {
-            return self.parse_method_call();
+            return Ok(self.parse_method_call()?);
         }
         else {
             // Start parsing the expression with the lowest precedence and descend
@@ -111,16 +114,16 @@ impl Parser {
         }
     }
 
-    fn parse_method_call(&mut self) -> Box<Expression> {
+    fn parse_method_call(&mut self) -> Result<Box<Expression>, ParserError> {
         let method_name = self.digest(None).unwrap();
         self.digest(Some(TokenType::ParenthesisL));
-        let args = self.parse_method_args();
+        let args = self.parse_method_args()?;
         self.digest(Some(TokenType::ParenthesisR));
         
-        return build_method_call_node(method_name.value.unwrap(), args);
+        Ok(build_method_call_node(method_name.value.unwrap(), args))
     }
 
-    fn parse_method_args(&mut self) -> Vec<Box<Expression>> {
+    fn parse_method_args(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {
         let mut args = vec![];
 
         while let Some(token) = self.peek(None) {
@@ -128,7 +131,7 @@ impl Parser {
                 break;
             }
             else {
-                args.push(self.parse_expression(0));
+                args.push(self.parse_expression(0)?);
                 let next = self.peek(None).unwrap();
                 if next.token_type != TokenType::ParenthesisR {
                     self.digest(Some(TokenType::ArgumentSeparator));
@@ -136,18 +139,18 @@ impl Parser {
             }
         }
 
-        return args;
+        Ok(args)
     }
 
-    fn parse_binary_expression(&mut self, precedence: i32) -> Box<Expression> {
-        let mut left = self.parse_term();
+    fn parse_binary_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError> {
+        let mut left = self.parse_term()?;
         
         while precedence < self.get_current_operator_predecence() {
             let token = self.peek(None).unwrap();
             if token.token_type == TokenType::Operator {
                 let op_precedence = self.get_current_operator_predecence();
                 self.digest(None);
-                let node = self.parse_expression(op_precedence);
+                let node = self.parse_expression(op_precedence)?;
                 left = build_node(&token, Some(left), Some(node));
             }
             else {
@@ -155,38 +158,38 @@ impl Parser {
             }
         }
 
-        return left;
+        Ok(left)
     }
 
-    fn parse_term(&mut self) -> Box<Expression> {
+    fn parse_term(&mut self) -> Result<Box<Expression>, ParserError> {
         let token = &self.digest(None).unwrap();
 
         match token.token_type {
             TokenType::Operator => {
                 if token.value.as_ref().unwrap() == "-" {
-                    let literal = self.parse_term();
-                    return build_unary_node(token, literal);
+                    let literal = self.parse_term()?;
+                    return Ok(build_unary_node(token, literal));
                 }
                 else {
-                    error_unrecognized_token(token);
+                    return Err(error_unrecognized_token(token));
                 }
             }
             TokenType::Symbol => {
-                return build_node(token, None, None);
+                return Ok(build_node(token, None, None));
             }
             TokenType::StringLiteral => {
-                return build_node(token, None, None);
+                return Ok(build_node(token, None, None));
             }
             TokenType::NumeralLiteral => {
-                return build_node(token, None, None)
+                return Ok(build_node(token, None, None));
             }
             TokenType::ParenthesisL => {
-                let expr = self.parse_statement();
+                let expr = self.parse_statement()?;
                 self.digest(Some(TokenType::ParenthesisR));
-                return expr;
+                return Ok(expr);
             }
             _ => {
-                error_unrecognized_token(token);
+                return Err(error_unrecognized_token(token));
             }
         }
         

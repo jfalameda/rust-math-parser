@@ -35,13 +35,14 @@ impl ToString for TokenType {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum OperatorType {
     Additive,
     Factorial,
     Exponential
 }
 
+#[derive(PartialEq, Clone, Debug)]
 pub struct Token {
     pub start: usize,
     pub end: usize,

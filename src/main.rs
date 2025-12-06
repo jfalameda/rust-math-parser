@@ -4,6 +4,7 @@ mod node;
 mod interpreter;
 mod error;
 mod lexer_errors;
+mod parser_errors;
 use std::{env, fs};
 use crate::interpreter::interpreter::Interpreter;
 use error::error;
@@ -39,6 +40,10 @@ fn main() {
     // Syntactical analysis and AST build
     let mut parser = parser::Parser::new(tokens);
     let ast = parser.parse();
+
+    let ast = ast.unwrap_or_else(|err| {
+        panic!("{}", err);
+    });
 
     // Interpreting the produced AST
     let interpreter = Interpreter::new(ast);
