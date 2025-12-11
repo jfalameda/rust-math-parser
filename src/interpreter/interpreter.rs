@@ -90,6 +90,8 @@ impl Interpreter {
         else if let Expression::Literal(literal) = node {
             // Preparing for having multiple types
             return match literal {
+                Literal::Boolean(b) => Value::Boolean(*b),
+                Literal::Integer(i) => Value::Integer(*i),
                 Literal::Float(f) => Value::Float(*f),
                 Literal::String(s) => Value::String(s.to_string())
             };

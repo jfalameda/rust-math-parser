@@ -1,4 +1,4 @@
-use crate::{lexer::{Token, TokenType}, error};
+use crate::{error, lexer::{NumeralType, Token, TokenType}};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
@@ -16,7 +16,9 @@ pub enum UnaryOperator {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
-    Float(f32),
+    Boolean(bool),
+    Integer(i64),
+    Float(f64),
     String(String)
 }
 
@@ -85,7 +87,10 @@ pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Bo
     let value = String::from(token.value.as_ref().unwrap());
     return
         match token.token_type {
-            TokenType::NumeralLiteral => build_numerical_literal_node(Literal::Float(value.parse::<f32>().unwrap())),
+            TokenType::NumeralLiteral(numeral_type) => match(numeral_type) {
+                NumeralType::Integer => build_numerical_literal_node(Literal::Integer(value.parse::<i64>().unwrap())),
+                NumeralType::Float => build_numerical_literal_node(Literal::Float(value.parse::<f64>().unwrap()))
+            },
             TokenType::StringLiteral => build_numerical_literal_node(Literal::String(value.parse::<String>().unwrap())),
             TokenType::Operator => build_binary_op_node(token_value_to_operator(value), left.unwrap(), right.unwrap()),
             TokenType::Assignment => build_assignment_node(value, left.unwrap()),

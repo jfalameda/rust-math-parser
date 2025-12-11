@@ -2,10 +2,16 @@ use std::{ffi::os_str::Display, fmt};
 
 use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
+#[derive(PartialEq, Clone, Debug, Copy)]
+pub enum NumeralType {
+    Integer,
+    Float
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
     Operator,
-    NumeralLiteral,
+    NumeralLiteral(NumeralType),
     BooleanLiteral,
     ParenthesisL,
     ParenthesisR,
@@ -26,7 +32,7 @@ impl ToString for TokenType {
     fn to_string(&self) -> String {
         match self {
             TokenType::Operator => "Operator",
-            TokenType::NumeralLiteral => "NumeralLiteral",
+            TokenType::NumeralLiteral(_) => "NumeralLiteral",
             TokenType::BooleanLiteral => "BooleanLiteral",
             TokenType::ParenthesisL => "ParanthesisL",
             TokenType::ParenthesisR => "ParanthesisR",
@@ -214,35 +220,29 @@ impl TokenParser {
             }
             // TODO: I need a better way to handle this, particularly so that
             // it can provide more actionable lexer errors.
-            else if c == 'i' {
+            else if c == 'i' &&  self.peek_until_no_alphabetic() == "if" {
                 let pos = self.column;
-                let word = self.peek_until_no_alphabetic();
-                if word == "if" {
-                    self.digest_n(2);
-                    tokens.push(Token {
-                        start: pos,
-                        end: self.column,
-                        line: self.line,
-                        token_type: TokenType::ConditionalIf,
-                        value: Some("if".to_string()),
-                        operator_type: None
-                    })
-                }
+                self.digest_n(2);
+                tokens.push(Token {
+                    start: pos,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::ConditionalIf,
+                    value: Some("if".to_string()),
+                    operator_type: None
+                })
             }
-            else if c == 'e' {
+            else if c == 'e' && self.peek_until_no_alphabetic() == "else" {
                 let pos = self.column;
-                let word = self.peek_until_no_alphabetic();
-                if word == "else" {
-                    self.digest_n(4);
-                    tokens.push(Token {
-                        start: pos,
-                        end: self.column,
-                        line: self.line,
-                        token_type: TokenType::ConditionalElse,
-                        value: Some("else".to_string()),
-                        operator_type: None
-                    })
-                }
+                self.digest_n(4);
+                tokens.push(Token {
+                    start: pos,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::ConditionalElse,
+                    value: Some("else".to_string()),
+                    operator_type: None
+                })
             }
             else if c == 'l' {
                 let pos = self.column;
@@ -345,7 +345,7 @@ impl TokenParser {
                     start: pos,
                     end: self.column,
                     line: self.line,
-                    token_type: TokenType::NumeralLiteral,
+                    token_type: TokenType::NumeralLiteral(if is_floating { NumeralType::Float } else { NumeralType::Integer }),
                     value: Some(number),
                     operator_type: None
                 })
@@ -462,7 +462,7 @@ mod tests {
             let result = parse_program(number.to_string());
             let token = result?.first().ok_or("List was empty")?.token_type.clone();
             assert!(
-                matches!(token, TokenType::NumeralLiteral),
+                matches!(token, TokenType::NumeralLiteral(_)),
                 "The token must be a NumeralLiteral, {} was found",
                 token.to_string()
             );
@@ -491,11 +491,11 @@ mod tests {
             (
                 "1+2+3",
                 vec![
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::Operator,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::Operator,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::Eof
                 ]
             ),
@@ -504,12 +504,12 @@ mod tests {
                 vec![
                     TokenType::ConditionalIf,
                     TokenType::ParenthesisL,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::Operator,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::ParenthesisR,
                     TokenType::BlockStart,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::BlockEnd,
                     TokenType::Eof
                 ]
@@ -519,12 +519,12 @@ mod tests {
                 vec![
                     TokenType::ConditionalIf,
                     TokenType::ParenthesisL,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::Operator,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::ParenthesisR,
                     TokenType::BlockStart,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::BlockEnd,
                     TokenType::Eof
                 ]
@@ -539,7 +539,7 @@ mod tests {
                     TokenType::BooleanLiteral,
                     TokenType::ParenthesisR,
                     TokenType::BlockStart,
-                    TokenType::NumeralLiteral,
+                    TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::BlockEnd,
                     TokenType::Eof
                 ]

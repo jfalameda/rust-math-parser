@@ -5,12 +5,13 @@ mod string;
 mod math;
 
 use crate::error;
+use crate::interpreter::methods::string::fn_to_number;
 
 use self::math::{fn_sin, fn_cos};
 use self::println::fn_println;
 use self::print::fn_print;
 use self::readln::fn_readln;
-use self::string::{fn_str_concat, fn_to_number};
+use self::string::{fn_str_concat};
 
 use super::value::Value;
 

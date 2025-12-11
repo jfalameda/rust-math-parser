@@ -88,7 +88,7 @@ impl Parser {
         let token = self.peek(None).unwrap();
 
         match token.token_type {
-            TokenType::NumeralLiteral | TokenType::Operator | TokenType::Symbol | TokenType::StringLiteral=> {
+            TokenType::NumeralLiteral(_) | TokenType::Operator | TokenType::Symbol | TokenType::StringLiteral=> {
                 return Ok(self.parse_expression(0)?);
             }
             TokenType::Declaration => {
@@ -180,7 +180,7 @@ impl Parser {
             TokenType::StringLiteral => {
                 return Ok(build_node(token, None, None));
             }
-            TokenType::NumeralLiteral => {
+            TokenType::NumeralLiteral(_) => {
                 return Ok(build_node(token, None, None));
             }
             TokenType::ParenthesisL => {

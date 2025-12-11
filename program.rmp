@@ -5,6 +5,14 @@ let cos_result = cos(30);
 
 let value = to_number(readln("Insert value: "));
 
+let value2 = "Number: " + 1;
+
+let value3 = "3" + 1;
+
+let int = to_number("1.2");
+
+let float = to_number("5");
+
 // Print variable a
 println("Result main: ", main_expr);
 // Concatenation using + symbol
@@ -12,6 +20,8 @@ println("Result sin(x): " + sin_result);
 
 println(str_concat("This ", "is ", "an ", "example"));
 
-if (true != false) {
-    println("true");
-}
+println(value2);
+
+println(value3);
+
+println("Float: " + int + " Integer: " + float);
