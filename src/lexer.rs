@@ -179,19 +179,16 @@ impl TokenParser {
                     operator_type: None
                 })
             }
-            else if c == '!' {
-                if self.peek_with_offset(1) == Some('=')
-                {
-                    self.digest_n(2);
-                    tokens.push(Token {
-                        start: self.column-2,
-                        end: self.column,
-                        line: self.line,
-                        token_type: TokenType::Operator,
-                        value: Some("!=".to_string()),
-                        operator_type: Some(OperatorType::Neq)
-                    })
-                }
+            else if c == '!' && self.peek_with_offset(1) == Some('=') {
+                self.digest_n(2);
+                tokens.push(Token {
+                    start: self.column-2,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::Operator,
+                    value: Some("!=".to_string()),
+                    operator_type: Some(OperatorType::Neq)
+                })
             }
             else if c == '=' {
                 if self.peek_with_offset(1) == Some('=')
@@ -244,20 +241,17 @@ impl TokenParser {
                     operator_type: None
                 })
             }
-            else if c == 'l' {
+            else if c == 'l' && self.peek_until_no_alphabetic() == "let" {
                 let pos = self.column;
-                let word = self.peek_until_no_alphabetic();
-                if word == "let" {
-                    self.digest_n(3);
-                    tokens.push(Token {
-                        start: pos,
-                        end: self.column,
-                        line: self.line,
-                        token_type: TokenType::Declaration,
-                        value: Some("let".to_string()),
-                        operator_type: None
-                    })
-                }
+                self.digest_n(3);
+                tokens.push(Token {
+                    start: pos,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::Declaration,
+                    value: Some("let".to_string()),
+                    operator_type: None
+                })
             }
             else if c == 't' && self.peek_until_no_alphabetic() == "true" {
                 self.digest_n(4);
