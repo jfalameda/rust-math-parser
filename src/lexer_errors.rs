@@ -3,7 +3,7 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub enum LexerInvalidTokenKind {
     MalformedNumberLiteral(String),
-    UnexpectedToken(char)
+    UnexpectedToken(String)
 }
 
 #[derive(Debug, Clone)]

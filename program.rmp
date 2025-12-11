@@ -11,3 +11,7 @@ println("Result main: ", main_expr);
 println("Result sin(x): " + sin_result);
 
 println(str_concat("This ", "is ", "an ", "example"));
+
+if (true != false) {
+    println("true");
+}

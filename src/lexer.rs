@@ -6,6 +6,7 @@ use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 pub enum TokenType {
     Operator,
     NumeralLiteral,
+    BooleanLiteral,
     ParenthesisL,
     ParenthesisR,
     Declaration,
@@ -14,6 +15,10 @@ pub enum TokenType {
     EndOfstatement,
     ArgumentSeparator,
     StringLiteral,
+    ConditionalIf,
+    ConditionalElse,
+    BlockStart,
+    BlockEnd,
     Eof
 }
 
@@ -22,6 +27,7 @@ impl ToString for TokenType {
         match self {
             TokenType::Operator => "Operator",
             TokenType::NumeralLiteral => "NumeralLiteral",
+            TokenType::BooleanLiteral => "BooleanLiteral",
             TokenType::ParenthesisL => "ParanthesisL",
             TokenType::ParenthesisR => "ParanthesisR",
             TokenType::Declaration => "Declaration",
@@ -30,6 +36,10 @@ impl ToString for TokenType {
             TokenType::EndOfstatement=> "EndOfStatement",
             TokenType::ArgumentSeparator => "ArgumentSeparator",
             TokenType::StringLiteral => "StringLiteral",
+            TokenType::ConditionalIf => "ConditionalIf",
+            TokenType::BlockStart => "BlockStart",
+            TokenType::BlockEnd => "BlockEnd",
+            TokenType::ConditionalElse => "ConditionalElse",
             TokenType::Eof => "Eof"
         }.to_string()
     }
@@ -39,7 +49,9 @@ impl ToString for TokenType {
 pub enum OperatorType {
     Additive,
     Factorial,
-    Exponential
+    Exponential,
+    Eq,
+    Neq
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -55,6 +67,7 @@ pub struct Token {
 impl Token {
     pub fn operator_predecende(self) -> i32 {
         match self.value.unwrap().as_str() {
+            "==" | "!=" => 4,
             "^" => 3,
             "*" | "/" => 2,
             "+" | "-" => 1,
@@ -120,6 +133,15 @@ impl TokenParser {
         }
         return None;
     }
+    fn peek_until_no_alphabetic(&self) -> String {
+        let mut pos = self.pos;
+        let mut acc = String::new();
+        while self.program[pos].is_ascii_alphabetic() {
+            acc.push(self.program[pos]);
+            pos += 1;
+        }
+        return acc;
+    }
     pub fn parse(&mut self) -> Result<Vec<Token>, LexerInvalidTokenError> {
         let mut tokens = vec![];
 
@@ -151,22 +173,81 @@ impl TokenParser {
                     operator_type: None
                 })
             }
+            else if c == '!' {
+                if self.peek_with_offset(1) == Some('=')
+                {
+                    self.digest_n(2);
+                    tokens.push(Token {
+                        start: self.column-2,
+                        end: self.column,
+                        line: self.line,
+                        token_type: TokenType::Operator,
+                        value: Some("!=".to_string()),
+                        operator_type: Some(OperatorType::Neq)
+                    })
+                }
+            }
             else if c == '=' {
-                self.digest();
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::Assignment,
-                    value: Some("=".to_string()),
-                    operator_type: None
-                })
+                if self.peek_with_offset(1) == Some('=')
+                {
+                    self.digest_n(2);
+                    tokens.push(Token {
+                        start: self.column-2,
+                        end: self.column,
+                        line: self.line,
+                        token_type: TokenType::Operator,
+                        value: Some("==".to_string()),
+                        operator_type: Some(OperatorType::Eq)
+                    })
+                }
+                else {
+                    self.digest();
+                    tokens.push(Token {
+                        start: self.column-1,
+                        end: self.column,
+                        line: self.line,
+                        token_type: TokenType::Assignment,
+                        value: Some("=".to_string()),
+                        operator_type: None
+                    })
+                }
+            }
+            // TODO: I need a better way to handle this, particularly so that
+            // it can provide more actionable lexer errors.
+            else if c == 'i' {
+                let pos = self.column;
+                let word = self.peek_until_no_alphabetic();
+                if word == "if" {
+                    self.digest_n(2);
+                    tokens.push(Token {
+                        start: pos,
+                        end: self.column,
+                        line: self.line,
+                        token_type: TokenType::ConditionalIf,
+                        value: Some("if".to_string()),
+                        operator_type: None
+                    })
+                }
+            }
+            else if c == 'e' {
+                let pos = self.column;
+                let word = self.peek_until_no_alphabetic();
+                if word == "else" {
+                    self.digest_n(4);
+                    tokens.push(Token {
+                        start: pos,
+                        end: self.column,
+                        line: self.line,
+                        token_type: TokenType::ConditionalElse,
+                        value: Some("else".to_string()),
+                        operator_type: None
+                    })
+                }
             }
             else if c == 'l' {
                 let pos = self.column;
-                let d = self.peek_with_offset(1).unwrap();
-                let e = self.peek_with_offset(2).unwrap();
-                if d == 'e' && e == 't' {
+                let word = self.peek_until_no_alphabetic();
+                if word == "let" {
                     self.digest_n(3);
                     tokens.push(Token {
                         start: pos,
@@ -177,6 +258,28 @@ impl TokenParser {
                         operator_type: None
                     })
                 }
+            }
+            else if c == 't' && self.peek_until_no_alphabetic() == "true" {
+                self.digest_n(4);
+                tokens.push(Token {
+                    start: self.column-4,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::BooleanLiteral,
+                    value: Some("true".to_string()),
+                    operator_type: None
+                });
+            }
+            else if c == 'f' && self.peek_until_no_alphabetic() == "false" {
+                self.digest_n(5);
+                tokens.push(Token {
+                    start: self.column-5,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::BooleanLiteral,
+                    value: Some("false".to_string()),
+                    operator_type: None
+                });
             }
             else if c == '"' {
                 let pos = self.column;
@@ -199,6 +302,7 @@ impl TokenParser {
                 }
                                
             }
+            // Anything else alphanumeric not processed, process as symbol
             else if c.is_ascii_alphabetic() {
                 let pos = self.column;
                 let mut symbol = format!("{}", self.digest());
@@ -284,6 +388,28 @@ impl TokenParser {
                 });
                 self.digest();
             }
+            else if c == '{' {
+                tokens.push(Token {
+                    start: self.column-1,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::BlockStart,
+                    value: Some(format!("{}", c)),
+                    operator_type: None
+                });
+                self.digest();
+            }
+            else if c == '}' {
+                tokens.push(Token {
+                    start: self.column-1,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::BlockEnd,
+                    value: Some(format!("{}", c)),
+                    operator_type: None
+                });
+                self.digest();
+            }
             else if c == ',' {
                 tokens.push(Token {
                     start: self.column-1,
@@ -297,7 +423,7 @@ impl TokenParser {
             }
             else {
                 return Err(LexerInvalidTokenError {
-                    kind: LexerInvalidTokenKind::UnexpectedToken(c),
+                    kind: LexerInvalidTokenKind::UnexpectedToken(c.to_string()),
                     line: self.line,
                     column: self.column,
                 });
@@ -370,6 +496,51 @@ mod tests {
                     TokenType::NumeralLiteral,
                     TokenType::Operator,
                     TokenType::NumeralLiteral,
+                    TokenType::Eof
+                ]
+            ),
+            (
+                "if (1 == 1) { 2 }",
+                vec![
+                    TokenType::ConditionalIf,
+                    TokenType::ParenthesisL,
+                    TokenType::NumeralLiteral,
+                    TokenType::Operator,
+                    TokenType::NumeralLiteral,
+                    TokenType::ParenthesisR,
+                    TokenType::BlockStart,
+                    TokenType::NumeralLiteral,
+                    TokenType::BlockEnd,
+                    TokenType::Eof
+                ]
+            ),
+            (
+                "if (1 != 1) { 2 }",
+                vec![
+                    TokenType::ConditionalIf,
+                    TokenType::ParenthesisL,
+                    TokenType::NumeralLiteral,
+                    TokenType::Operator,
+                    TokenType::NumeralLiteral,
+                    TokenType::ParenthesisR,
+                    TokenType::BlockStart,
+                    TokenType::NumeralLiteral,
+                    TokenType::BlockEnd,
+                    TokenType::Eof
+                ]
+            ),
+            (
+                "if (true != false) { 2 }",
+                vec![
+                    TokenType::ConditionalIf,
+                    TokenType::ParenthesisL,
+                    TokenType::BooleanLiteral,
+                    TokenType::Operator,
+                    TokenType::BooleanLiteral,
+                    TokenType::ParenthesisR,
+                    TokenType::BlockStart,
+                    TokenType::NumeralLiteral,
+                    TokenType::BlockEnd,
                     TokenType::Eof
                 ]
             )
