@@ -45,3 +45,8 @@ else if (bool_ops) {
 else {
     println("None is true!");
 }
+
+if (10 == (11 - 1))
+    println("The numbers are equal!");
+else
+    println("The numbers are not equal!");

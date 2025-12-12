@@ -71,13 +71,13 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn operator_predecende(self) -> i32 {
+    pub fn operator_predecende(self) -> (i32, bool) {
         match self.value.unwrap().as_str() {
-            "==" | "!=" => 4,
-            "^" => 3,
-            "*" | "/" => 2,
-            "+" | "-" => 1,
-            _ => 0
+            "==" | "!=" => (4, false),
+            "^" => (3, true),
+            "*" | "/" => (2, false),
+            "+" | "-" => (1, false),
+            _ => (0, false)
         }
     }
 }

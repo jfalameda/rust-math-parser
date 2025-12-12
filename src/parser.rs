@@ -54,10 +54,10 @@ impl Parser {
         Ok(token)
     }
 
-    fn get_current_operator_precedence(&self) -> i32 {
+    fn get_current_operator_precedence(&self) -> (i32, bool) {
         match self.peek(None) {
             Some(op) if op.token_type == TokenType::Operator => op.clone().operator_predecende(),
-            _ => 0,
+            _ => (0, false),
         }
     }
 
@@ -147,7 +147,9 @@ impl Parser {
             Ok(if_block)
         }
         else {
-            Ok(vec![self.parse_statement()?])
+            let stmt = self.parse_statement()?;
+            self.consume_statement_terminator(&stmt)?;
+            Ok(vec![stmt])
         }
     }
 
@@ -202,14 +204,24 @@ impl Parser {
     fn parse_binary_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError> {
         let mut left = self.parse_term()?;
 
-        while precedence < self.get_current_operator_precedence() {
-            let token = self.peek(None).ok_or_else(error_eof)?.clone();
-            let op_precedence = self.get_current_operator_precedence();
+        loop {
+            let op_token = match self.peek(None) {
+                Some(t) if t.token_type == TokenType::Operator => t.clone(),
+                _ => break,
+            };
 
-            self.digest(TokenType::Operator)?; // consume operator
-            let right = self.parse_expression(op_precedence)?;
+            let (op_precedence, is_right) = op_token.clone().operator_predecende();
 
-            left = build_node(&token, Some(left), Some(right));
+            if op_precedence < precedence {
+                break;
+            }
+
+            self.digest(TokenType::Operator)?;
+
+            let next_precedence = if is_right { op_precedence } else { op_precedence + 1 };
+
+            let right = self.parse_expression(next_precedence)?;
+            left = build_node(&op_token, Some(left), Some(right));
         }
 
         Ok(left)
