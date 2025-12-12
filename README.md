@@ -31,6 +31,10 @@ println("Result sin(x): " + sin_result);
 
 println(str_concat("This ", "is ", "an ", "example"));
 
+if (value == 10) {
+    println("The value is 10!);
+}
+
 ```
 
 ## TODO
