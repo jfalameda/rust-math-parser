@@ -37,7 +37,7 @@ impl Parser {
             });
         }
         let token = self.tokens[self.pos].clone();
-        
+
         if let Some(token_ref) = token_type {
             if token.token_type != token_ref {
                 return Err(error_unexpected_token(&token, &token_ref));
@@ -59,8 +59,10 @@ impl Parser {
 
     fn get_current_operator_predecence(&self) -> i32 {
         let op1 = self.peek(None);
-        if op1.is_some() && op1.as_ref().unwrap().token_type == TokenType::Operator {
-            return op1.unwrap().operator_predecende();
+        if let Some(op) = op1 {
+            if op.token_type == TokenType::Operator {
+                return op.operator_predecende();
+            }
         }
         return 0;
     }
@@ -171,12 +173,12 @@ impl Parser {
 
         match token.token_type {
             TokenType::Operator => {
-                if token.value.as_ref().unwrap() == "-" {
-                    let literal = self.parse_term()?;
-                    return Ok(build_unary_node(token, literal));
-                }
-                else {
-                    return Err(error_unrecognized_token(token));
+                match token.value.as_deref() {
+                    Some("-") => {
+                        let literal = self.parse_term()?;
+                        Ok(build_unary_node(token, literal))
+                    }
+                    _ => Err(error_unrecognized_token(token)),
                 }
             }
             TokenType::Symbol => {
