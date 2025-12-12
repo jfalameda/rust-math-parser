@@ -37,10 +37,10 @@ impl Parser {
             });
         }
         let token = self.tokens[self.pos].clone();
-        if token_type.is_some() {
-            let token_ref = token_type.as_ref().unwrap();
-            if token.token_type != *token_ref {
-                return Err(error_unexpected_token(&token, token_ref));
+        
+        if let Some(token_ref) = token_type {
+            if token.token_type != token_ref {
+                return Err(error_unexpected_token(&token, &token_ref));
             }
         }
         // Increment the pointer
