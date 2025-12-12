@@ -37,16 +37,14 @@ impl Parser {
         self.tokens.get(pos.unwrap_or(self.pos))
     }
 
-    fn digest(&mut self, expected: Option<TokenType>) -> Result<Token, ParserError> {
+    fn digest(&mut self, expected: TokenType) -> Result<Token, ParserError> {
         let token = self
             .peek(None)
             .ok_or_else(error_eof)?
             .clone();
 
-        if let Some(expected_type) = expected {
-            if token.token_type != expected_type {
-                return Err(error_unexpected_token(&token, &expected_type));
-            }
+        if token.token_type != expected {
+            return Err(error_unexpected_token(&token, &expected));
         }
 
         self.pos += 1;
@@ -69,12 +67,12 @@ impl Parser {
 
         while let Some(token) = self.peek(None) {
             if token.token_type == TokenType::Eof {
-                self.digest(None)?; // consume EOF
+                self.digest(TokenType::Eof)?; // consume EOF
                 break;
             }
 
             let stmt = self.parse_statement()?;
-            self.digest(Some(TokenType::EndOfstatement))?;
+            self.digest(TokenType::EndOfstatement)?;
             body.push(build_statement_node(stmt));
         }
 
@@ -91,9 +89,9 @@ impl Parser {
             | TokenType::StringLiteral => Ok(self.parse_expression(0)?),
 
             TokenType::Declaration => {
-                self.digest(Some(TokenType::Declaration))?; // consume "let"
-                let symbol = self.digest(Some(TokenType::Symbol))?;
-                self.digest(Some(TokenType::Assignment))?;
+                self.digest(TokenType::Declaration)?; // consume "let"
+                let symbol = self.digest(TokenType::Symbol)?;
+                self.digest(TokenType::Assignment)?;
                 let expr = self.parse_expression(0)?;
                 Ok(build_assignment_node(symbol.value.ok_or_else(error_eof)?, expr))
             }
@@ -116,10 +114,10 @@ impl Parser {
     }
 
     fn parse_method_call(&mut self) -> Result<Box<Expression>, ParserError> {
-        let method_name = self.digest(Some(TokenType::Symbol))?;
-        self.digest(Some(TokenType::ParenthesisL))?;
+        let method_name = self.digest(TokenType::Symbol)?;
+        self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
-        self.digest(Some(TokenType::ParenthesisR))?;
+        self.digest(TokenType::ParenthesisR)?;
 
         Ok(build_method_call_node(method_name.value.ok_or_else(error_eof)?, args))
     }
@@ -137,7 +135,7 @@ impl Parser {
             // If next is not ')', expect a comma
             if let Some(next) = self.peek(None) {
                 if next.token_type != TokenType::ParenthesisR {
-                    self.digest(Some(TokenType::ArgumentSeparator))?;
+                    self.digest(TokenType::ArgumentSeparator)?;
                 }
             } else {
                 return Err(error_eof());
@@ -154,7 +152,7 @@ impl Parser {
             let token = self.peek(None).ok_or_else(error_eof)?.clone();
             let op_precedence = self.get_current_operator_precedence();
 
-            self.digest(None)?; // consume operator
+            self.digest(TokenType::Operator)?; // consume operator
             let right = self.parse_expression(op_precedence)?;
 
             left = build_node(&token, Some(left), Some(right));
@@ -170,7 +168,7 @@ impl Parser {
             TokenType::Operator => {
                 match token.value.as_deref() {
                     Some("-") => {
-                        self.digest(None)?; // consume '-'
+                        self.digest(TokenType::Operator)?; // consume '-'
                         let literal = self.parse_term()?;
                         Ok(build_unary_node(&token, literal))
                     }
@@ -181,14 +179,14 @@ impl Parser {
             TokenType::Symbol
             | TokenType::StringLiteral
             | TokenType::NumeralLiteral(_) => {
-                self.digest(None)?; // consume literal
+                self.digest(token.token_type.clone())?; // consume literal
                 Ok(build_node(&token, None, None))
             }
 
             TokenType::ParenthesisL => {
-                self.digest(None)?; // consume '('
+                self.digest(TokenType::ParenthesisL)?; // consume '('
                 let expr = self.parse_expression(0)?;
-                self.digest(Some(TokenType::ParenthesisR))?;
+                self.digest(TokenType::ParenthesisR)?;
                 Ok(expr)
             }
 
