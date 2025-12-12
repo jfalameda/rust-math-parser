@@ -30,24 +30,29 @@ impl Parser {
         }
     }
 
-    fn digest(&mut self, token_type : Option<lexer::TokenType>) -> Option<lexer::Token> {
+    fn digest(&mut self, token_type : Option<lexer::TokenType>) -> Result<lexer::Token, ParserError> {
         if self.tokens.len() == 0 {
-            return None;
+            return Err(ParserError {
+                kind: ParserErrorKind::Empty
+            });
         }
-        let token = self.tokens.remove(0);
+        let token = self.tokens[self.pos].clone();
         if token_type.is_some() {
             let token_ref = token_type.as_ref().unwrap();
             if token.token_type != *token_ref {
-                error_unexpected_token(&token, token_ref);
+                return Err(error_unexpected_token(&token, token_ref));
             }
         }
-        return Some(token);
+        // Increment the pointer
+        self.pos += 1;
+        
+        return Ok(token);
     }
 
     fn peek(&self, pos: Option<usize>) -> Option<lexer::Token> {
         let pos = pos.unwrap_or(self.pos);
         if pos < self.tokens.len() {
-            return Some(self.tokens[pos].clone_token());
+            return Some(self.tokens[pos].clone());
         }
         return None;
     }
@@ -67,18 +72,18 @@ impl Parser {
 
     fn parse_program(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {
         let statement = self.parse_statement()?;
-        self.digest(Some(TokenType::EndOfstatement));
+        self.digest(Some(TokenType::EndOfstatement))?;
 
         let mut body = vec![statement];
 
         while let Some(token) = self.peek(None) {
             if token.token_type == TokenType::Eof {
-                self.digest(None);
+                self.digest(None)?;
                 break;
             }
             let right = self.parse_statement()?;
             body.push(build_statement_node(right));
-            self.digest(Some(TokenType::EndOfstatement));
+            self.digest(Some(TokenType::EndOfstatement))?;
         }
 
         Ok(body)
@@ -92,9 +97,9 @@ impl Parser {
                 return Ok(self.parse_expression(0)?);
             }
             TokenType::Declaration => {
-                self.digest(None);
+                self.digest(None)?;
                 let symbol = self.digest(Some(TokenType::Symbol)).unwrap();
-                self.digest(Some(TokenType::Assignment));
+                self.digest(Some(TokenType::Assignment))?;
                 let expr = self.parse_expression(0)?;
                 return Ok(build_assignment_node(symbol.value.unwrap(), expr));
             }
@@ -116,9 +121,9 @@ impl Parser {
 
     fn parse_method_call(&mut self) -> Result<Box<Expression>, ParserError> {
         let method_name = self.digest(None).unwrap();
-        self.digest(Some(TokenType::ParenthesisL));
+        self.digest(Some(TokenType::ParenthesisL))?;
         let args = self.parse_method_args()?;
-        self.digest(Some(TokenType::ParenthesisR));
+        self.digest(Some(TokenType::ParenthesisR))?;
         
         Ok(build_method_call_node(method_name.value.unwrap(), args))
     }
@@ -134,7 +139,7 @@ impl Parser {
                 args.push(self.parse_expression(0)?);
                 let next = self.peek(None).unwrap();
                 if next.token_type != TokenType::ParenthesisR {
-                    self.digest(Some(TokenType::ArgumentSeparator));
+                    self.digest(Some(TokenType::ArgumentSeparator))?;
                 }
             }
         }
@@ -149,7 +154,7 @@ impl Parser {
             let token = self.peek(None).unwrap();
             if token.token_type == TokenType::Operator {
                 let op_precedence = self.get_current_operator_predecence();
-                self.digest(None);
+                self.digest(None)?;
                 let node = self.parse_expression(op_precedence)?;
                 left = build_node(&token, Some(left), Some(node));
             }
@@ -185,7 +190,7 @@ impl Parser {
             }
             TokenType::ParenthesisL => {
                 let expr = self.parse_statement()?;
-                self.digest(Some(TokenType::ParenthesisR));
+                self.digest(Some(TokenType::ParenthesisR))?;
                 return Ok(expr);
             }
             _ => {

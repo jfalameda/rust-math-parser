@@ -8,6 +8,7 @@ pub fn fn_readln(args: Vec<Value>) -> Value {
         print!("{}", str);
     });
 
+    // TODO: Proper runtime error handling
     stdout().flush()
         .expect("Unable to flush");
 

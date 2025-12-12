@@ -80,16 +80,6 @@ impl Token {
             _ => 0
         }
     }
-    pub fn clone_token(&self) -> Token {
-        return Token {
-            start: self.start.clone(),
-            end: self.end.clone(),
-            line: self.line.clone(),
-            token_type: self.token_type.clone(),
-            value: Some(self.value.as_ref().unwrap_or(&String::from("")).clone()),
-            operator_type: self.operator_type.clone()
-        }
-    }
 }
 
 pub struct TokenParser {

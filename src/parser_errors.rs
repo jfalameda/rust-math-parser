@@ -5,7 +5,8 @@ use crate::lexer::Token;
 #[derive(Debug, Clone)]
 pub enum ParserErrorKind {
     Unrecognizedtoken(Token),
-    UnexpectedToken(String, Token)
+    UnexpectedToken(String, Token),
+    Empty
 }
 
 #[derive(Debug, Clone)]
@@ -23,6 +24,9 @@ impl fmt::Display for ParserErrorKind {
             ParserErrorKind::UnexpectedToken(expected, token) => {
                 let found = token.value.clone().unwrap_or_default();
                 write!(f, "Syntax error: Expected token {} at line {} and character {}, instead found {}", expected, token.line, token.start, found)
+            }
+            ParserErrorKind::Empty => {
+                write!(f, "Parser error: Unexpected error, no more tokens to parse")
             }
         }
     }
