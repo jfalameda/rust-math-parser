@@ -6,7 +6,9 @@ pub enum Operator {
     Min,
     Mul,
     Div,
-    Exp
+    Exp,
+    Eq,
+    Neq
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -40,16 +42,20 @@ pub struct MethodCall
     pub arguments: Vec<Box<Expression>>,
 }
 
+pub type Block = Vec<Box<Expression>>;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Literal(Literal),
     BinaryOperation(Box<Expression>, Operator, Box<Expression>),
     UnaryOperation(UnaryOperator, Box<Expression>),
-    Program(Program),
+    Program(Program), // Change to block?
     Statement(Box<Expression>),
     MethodCall(MethodCall),
     Identifier(Identifier),
-    Declaration(Identifier, Box<Expression>)
+    Declaration(Identifier, Box<Expression>),
+    Block(Block),
+    IfConditional(Box<Expression>, Block, Option<Block>)
 }
 
 fn token_value_to_operator(value: String) -> Operator {
@@ -59,6 +65,8 @@ fn token_value_to_operator(value: String) -> Operator {
         "*" => Operator::Mul,
         "/" => Operator::Div,
         "^" => Operator::Exp,
+        "==" => Operator::Eq,
+        "!=" => Operator::Neq,
         _  => error(format!("Unrecognized operator {}", value))
     };
 }
@@ -72,6 +80,10 @@ pub fn build_method_call_node(method_name: String, args: Vec<Box<Expression>>) -
 
 pub fn build_numerical_literal_node(literal: Literal) -> Box<Expression> {
     return Box::new(Expression::Literal(literal));
+}
+
+pub fn build_conditional_node(condition: Box<Expression>, if_block: Block, else_block: Option<Block>) -> Box<Expression> {
+    return Box::new(Expression::IfConditional(condition, if_block, else_block));
 }
 
 pub fn build_binary_op_node(operator: Operator, left: Box<Expression>, right: Box<Expression>) -> Box<Expression> {
@@ -92,6 +104,7 @@ pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Bo
                 NumeralType::Float => build_numerical_literal_node(Literal::Float(value.parse::<f64>().unwrap()))
             },
             TokenType::StringLiteral => build_numerical_literal_node(Literal::String(value.parse::<String>().unwrap())),
+            TokenType::BooleanLiteral => build_numerical_literal_node(Literal::Boolean(value.parse::<bool>().unwrap())),
             TokenType::Operator => build_binary_op_node(token_value_to_operator(value), left.unwrap(), right.unwrap()),
             TokenType::Assignment => build_assignment_node(value, left.unwrap()),
             TokenType::Symbol => Box::new(Expression::Identifier(Identifier { name: value })),

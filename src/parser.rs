@@ -1,7 +1,6 @@
 use crate::lexer::{self, Token, TokenType};
 use crate::node::{
-    Expression, build_node, build_unary_node, build_program_node, build_statement_node,
-    build_method_call_node, build_assignment_node,
+    Block, Expression, build_assignment_node, build_conditional_node, build_method_call_node, build_node, build_program_node, build_statement_node, build_unary_node
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -37,6 +36,10 @@ impl Parser {
         self.tokens.get(pos.unwrap_or(self.pos))
     }
 
+    fn peek_type_is(&self, expected: TokenType) -> bool {
+        matches!(self.peek(None), Some(t) if t.token_type == expected)
+    }
+
     fn digest(&mut self, expected: TokenType) -> Result<Token, ParserError> {
         let token = self
             .peek(None)
@@ -59,10 +62,20 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Box<Expression>, ParserError> {
-        Ok(build_program_node(self.parse_program()?))
+        Ok(build_program_node(self.parse_block()?))
     }
 
-    fn parse_program(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {
+    fn consume_statement_terminator(&mut self, stmt: &Box<Expression>) -> Result<(), ParserError> {
+        match stmt.as_ref() {
+            Expression::IfConditional(_, _, _) => Ok(()),
+            _ => {
+                self.digest(TokenType::EndOfstatement)?;
+                Ok(())
+            },
+        }
+}
+
+    fn parse_block(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {
         let mut body = vec![];
 
         while let Some(token) = self.peek(None) {
@@ -70,9 +83,13 @@ impl Parser {
                 self.digest(TokenType::Eof)?; // consume EOF
                 break;
             }
+            if token.token_type == TokenType::BlockEnd {
+                break;
+            }
 
             let stmt = self.parse_statement()?;
-            self.digest(TokenType::EndOfstatement)?;
+            self.consume_statement_terminator(&stmt)?;
+
             body.push(build_statement_node(stmt));
         }
 
@@ -82,35 +99,72 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Box<Expression>, ParserError> {
         let token = self.peek(None).ok_or_else(error_eof)?;
 
-        match token.token_type {
+        let statement = match token.token_type {
             TokenType::NumeralLiteral(_)
+            | TokenType::BooleanLiteral
             | TokenType::Operator
             | TokenType::Symbol
             | TokenType::StringLiteral => Ok(self.parse_expression(0)?),
-
-            TokenType::Declaration => {
-                self.digest(TokenType::Declaration)?; // consume "let"
-                let symbol = self.digest(TokenType::Symbol)?;
-                self.digest(TokenType::Assignment)?;
-                let expr = self.parse_expression(0)?;
-                Ok(build_assignment_node(symbol.value.ok_or_else(error_eof)?, expr))
-            }
-
+            TokenType::Declaration     => Ok(self.parse_declaration()?),
+            TokenType::ConditionalIf   => Ok(self.parse_conditional()?),
             _ => Err(error_unrecognized_token(token)),
+        }?;
+
+        Ok(statement)
+    }
+    fn parse_declaration(&mut self) -> Result<Box<Expression>, ParserError> {
+        self.digest(TokenType::Declaration)?; // consume "let"
+        let symbol = self.digest(TokenType::Symbol)?;
+        self.digest(TokenType::Assignment)?;
+        let expr = self.parse_expression(0)?;
+        Ok(build_assignment_node(symbol.value.ok_or_else(error_eof)?, expr))
+    }
+
+    fn parse_conditional(&mut self) -> Result<Box<Expression>, ParserError> {
+        self.digest(TokenType::ConditionalIf)?;
+        self.digest(TokenType::ParenthesisL)?;
+        let expr = self.parse_expression(0)?;
+        self.digest(TokenType::ParenthesisR)?;
+        
+        let if_block = self.parse_statement_or_block()?;
+
+        let else_block = if self.peek_type_is(TokenType::ConditionalElse) {
+            self.digest(TokenType::ConditionalElse)?;
+            Some(self.parse_statement_or_block()?)
+        } else {
+            None
+        };
+
+        Ok(build_conditional_node(expr, if_block, else_block))
+    }
+
+    fn parse_statement_or_block(&mut self)  -> Result<Block, ParserError> {
+        // If can be followed either by a block or by a simple statement
+        if self.peek_type_is(TokenType::BlockStart) {
+            self.digest(TokenType::BlockStart)?;
+            let if_block = self.parse_block()?;
+            self.digest(TokenType::BlockEnd)?;
+            Ok(if_block)
+        }
+        else {
+            Ok(vec![self.parse_statement()?])
         }
     }
+
 
     fn parse_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError> {
         let token = self.peek(None).ok_or_else(error_eof)?;
         let next = self.peek(Some(self.pos + 1));
 
-        if token.token_type == TokenType::Symbol
+        let expr = if token.token_type == TokenType::Symbol
             && matches!(next.map(|t| t.token_type.clone()), Some(TokenType::ParenthesisL))
         {
             self.parse_method_call()
         } else {
             self.parse_binary_expression(precedence)
-        }
+        };
+
+        return expr;
     }
 
     fn parse_method_call(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -178,6 +232,7 @@ impl Parser {
 
             TokenType::Symbol
             | TokenType::StringLiteral
+            | TokenType::BooleanLiteral
             | TokenType::NumeralLiteral(_) => {
                 self.digest(token.token_type.clone())?; // consume literal
                 Ok(build_node(&token, None, None))

@@ -62,6 +62,55 @@ impl Value {
         }
     }
 
+    pub fn to_bool(&self) -> bool {
+        match self {
+            Value::Boolean(b) => *b,
+
+            // Integers: 0 = false, non-zero = true
+            Value::Integer(i) => *i != 0,
+
+            // Floats: 0.0 = false, everything else = true
+            Value::Float(f) => *f != 0.0,
+
+            // Empty = false
+            Value::Empty => false,
+
+            // Strings: trim whitespace, then:
+            // "" or "0" or "false" (case-insensitive) → false
+            // anything else → true
+            Value::String(s) => {
+                let t = s.trim().to_ascii_lowercase();
+                !(t.is_empty() || t == "0" || t == "false")
+            }
+        }
+    }
+
+    pub fn eq_value(&self, other: &Value) -> Value {
+        let result = match (self, other) {
+            // same-type
+            (Value::Integer(a), Value::Integer(b)) => a == b,
+            (Value::Float(a),   Value::Float(b))   => a == b,
+            (Value::String(a),  Value::String(b))  => a == b,
+            (Value::Boolean(a), Value::Boolean(b)) => a == b,
+            (Value::Empty,      Value::Empty)      => true,
+
+            // cross numeric
+            (Value::Integer(a), Value::Float(b)) => (*a as f64) == *b,
+            (Value::Float(a),   Value::Integer(b)) => *a == (*b as f64),
+
+            _ => false,
+        };
+
+        Value::Boolean(result)
+    }
+
+    pub fn neq_value(&self, other: &Value) -> Value {
+        match self.eq_value(other) {
+            Value::Boolean(b) => Value::Boolean(!b),
+            _ => unreachable!(),
+        }
+    }
+
     /// Internal helper: unify numeric handling and preserve integer results when possible.
     ///
     /// Returns `Value::Integer(i64)` if both operands were integers and operation result fits in i64,
@@ -181,6 +230,8 @@ impl ops::Div<Value> for Value {
         Value::Float(lf / rf)
     }
 }
+
+impl Eq for Value {}
 
 /// Convert trait used in your code base. Keep implementations for types you used.
 pub trait Convert: Sized {

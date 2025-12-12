@@ -1,5 +1,5 @@
 use crate::error::error;
-use crate::node::{Expression, Identifier, Literal, Operator, MethodCall, Program};
+use crate::node::{Block, Expression, Identifier, Literal, MethodCall, Operator, Program};
 use std::collections::{HashMap};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
@@ -32,6 +32,7 @@ impl Interpreter {
                 self.evaluate_expression(node_content);
             },
             Expression::Statement(_) | Expression::Declaration(_, _) | Expression::MethodCall(_) => self.evaluate_statement(node_content),
+            Expression::IfConditional(expression, if_block, else_block) => self.evaluate_conditional(expression, if_block, else_block),
             _ => error("Unexpected AST node.".to_string())
         }
     }
@@ -39,7 +40,11 @@ impl Interpreter {
     fn evaluate_program(&self, program: &Program) {
         let statements = &program.body;
 
-        for statement in statements {
+        self.evaluate_block(statements);
+    }
+
+    fn evaluate_block(&self, block: &Block) {
+        for statement in block {
             self.evaluate(Some(statement));
         }
     }
@@ -56,6 +61,16 @@ impl Interpreter {
                 self.evaluate_method_call(method_call);
             },
             _ => error("Unexpected AST node".to_string())
+        }
+    }
+
+    fn evaluate_conditional(&self, expression: &Expression, if_block: &Block, else_block: &Option<Block>) {
+        let expression_result = self.evaluate_expression(expression);
+        if expression_result.to_bool() {
+            self.evaluate_block(&if_block);
+        }
+        else if let Some(else_block) = else_block {
+            self.evaluate_block(&else_block);
         }
     }
 
@@ -123,6 +138,9 @@ impl Interpreter {
                 Operator::Div => left / right,
                 Operator::Min => left - right,
                 Operator::Sum => left + right,
+                Operator::Eq  => left.eq_value(&right),
+                Operator::Neq => left.neq_value(&right),
+
             };
         }
         else {

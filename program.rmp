@@ -13,10 +13,16 @@ let int = to_number("1.2");
 
 let float = to_number("5");
 
+let bools = 1 + true + false;
+
+let bool_ops = true == true;
+
 // Print variable a
 println("Result main: ", main_expr);
 // Concatenation using + symbol
 println("Result sin(x): " + sin_result);
+
+let boolean_value = to_number(readln("Insert boolean value (0 false, 1 true): "));
 
 println(str_concat("This ", "is ", "an ", "example"));
 
@@ -25,3 +31,17 @@ println(value2);
 println(value3);
 
 println("Float: " + int + " Integer: " + float);
+
+println("Bools result: " + bools);
+
+println("Bool ops: " + bool_ops);
+
+if (boolean_value) {
+    println("It is true!");
+}
+else if (bool_ops) {
+        println("But the variable is true!");
+}
+else {
+    println("None is true!");
+}
