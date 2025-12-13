@@ -17,12 +17,10 @@ pub struct ScopeArena {
 }
 
 impl ScopeArena {
-    /// Create a new empty arena
     pub fn new() -> Self {
         Self { scopes: Vec::new() }
     }
 
-    /// Create a new scope
     pub fn new_scope(&mut self, parent: Option<ScopeId>) -> ScopeId {
         let scope = Scope {
             parent,
@@ -33,7 +31,6 @@ impl ScopeArena {
         self.scopes.len() - 1
     }
 
-    /// Define a variable in the current scope
     pub fn define(
         &mut self,
         scope_id: ScopeId,
