@@ -41,7 +41,7 @@ fn main() {
     let mut parser = parser::Parser::new(tokens);
     let ast = parser.parse();
 
-    let mut ast = ast.unwrap_or_else(|err| {
+    let ast = ast.unwrap_or_else(|err| {
         panic!("{}", err);
     });
 
