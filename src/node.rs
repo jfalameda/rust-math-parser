@@ -13,7 +13,8 @@ pub enum Operator {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum UnaryOperator {
-    Min
+    Min,
+    Not
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -112,9 +113,14 @@ pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Bo
         };
 }
 
-// TODO: Check for the actual operator
-pub fn build_unary_node(_: &Token, node: Box<Expression>) -> Box<Expression> {
-    return Box::new(Expression::UnaryOperation(UnaryOperator::Min, node));
+pub fn build_unary_node(token: &Token, node: Box<Expression>) -> Box<Expression> {
+    // TODO: Do not rely on strings here
+    let operator = match token.value.as_deref() {
+        Some("-") => UnaryOperator::Min,
+        Some("!") => UnaryOperator::Not,
+        _ => panic!("Invalid unary operator"),
+    };
+    return Box::new(Expression::UnaryOperation(operator, node));
 }
 
 pub fn build_program_node(body: Vec<Box<Expression>>) -> Box<Expression> {

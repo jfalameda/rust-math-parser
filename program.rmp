@@ -15,7 +15,7 @@ let float = to_number("5");
 
 let bools = 1 + true + false;
 
-let bool_ops = true == true;
+let bool_ops = !true == true;
 
 // Print variable a
 println("Result main: ", main_expr);

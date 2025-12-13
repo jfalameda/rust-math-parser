@@ -54,13 +54,6 @@ impl Parser {
         Ok(token)
     }
 
-    fn get_current_operator_precedence(&self) -> (i32, bool) {
-        match self.peek(None) {
-            Some(op) if op.token_type == TokenType::Operator => op.clone().operator_predecende(),
-            _ => (0, false),
-        }
-    }
-
     pub fn parse(&mut self) -> Result<Box<Expression>, ParserError> {
         Ok(build_program_node(self.parse_block()?))
     }
@@ -75,7 +68,7 @@ impl Parser {
         }
 }
 
-    fn parse_block(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {
+    fn parse_block(&mut self) -> Result<Block, ParserError> {
         let mut body = vec![];
 
         while let Some(token) = self.peek(None) {
@@ -240,6 +233,11 @@ impl Parser {
                     }
                     _ => Err(error_unrecognized_token(&token)),
                 }
+            }
+            TokenType::UnaryOperator => {
+                self.digest(TokenType::UnaryOperator)?;
+                let literal = self.parse_term()?;
+                Ok(build_unary_node(&token, literal))
             }
 
             TokenType::Symbol

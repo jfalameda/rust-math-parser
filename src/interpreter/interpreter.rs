@@ -1,5 +1,5 @@
 use crate::error::error;
-use crate::node::{Block, Expression, Identifier, Literal, MethodCall, Operator, Program};
+use crate::node::{Block, Expression, Identifier, Literal, MethodCall, Operator, Program, UnaryOperator};
 use std::collections::{HashMap};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
@@ -114,9 +114,12 @@ impl Interpreter {
         else if let Expression::MethodCall(method_call) = node {
             return self.evaluate_method_call(method_call);
         }
-        else if let Expression::UnaryOperation(_, expr) = node {
+        else if let Expression::UnaryOperation(operator, expr) = node {
             // Assuming is minus unary operator
-            return Value::Float(-1.0) * self.evaluate_expression(expr);
+            return match operator {
+                UnaryOperator::Min => Value::Float(-1.0) * self.evaluate_expression(expr),
+                UnaryOperator::Not => Value::Boolean(false) * self.evaluate_expression(expr)
+            }
         }
         else if let Expression::BinaryOperation(left, op, right) = node {
 

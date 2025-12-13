@@ -1,4 +1,4 @@
-use std::{ffi::os_str::Display, fmt};
+use std::{ffi::os_str::Display, fmt, fs::OpenOptions};
 
 use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
@@ -11,6 +11,7 @@ pub enum NumeralType {
 #[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
     Operator,
+    UnaryOperator,
     NumeralLiteral(NumeralType),
     BooleanLiteral,
     ParenthesisL,
@@ -32,6 +33,7 @@ impl ToString for TokenType {
     fn to_string(&self) -> String {
         match self {
             TokenType::Operator => "Operator",
+            TokenType::UnaryOperator => "UnaryOperator",
             TokenType::NumeralLiteral(_) => "NumeralLiteral",
             TokenType::BooleanLiteral => "BooleanLiteral",
             TokenType::ParenthesisL => "ParanthesisL",
@@ -72,12 +74,12 @@ pub struct Token {
 
 impl Token {
     pub fn operator_predecende(self) -> (i32, bool) {
-        match self.value.unwrap().as_str() {
-            "==" | "!=" => (4, false),
-            "^" => (3, true),
-            "*" | "/" => (2, false),
-            "+" | "-" => (1, false),
-            _ => (0, false)
+        match self.operator_type {
+            Some(OperatorType::Additive) => (1, false),
+            Some(OperatorType::Factorial) => (2, false),
+            Some(OperatorType::Exponential) => (3, true),
+            Some(OperatorType::Eq | OperatorType::Neq) => (4, false),
+            None => (1, false),
         }
     }
 }
@@ -116,20 +118,20 @@ impl TokenParser {
             self.digest()
         }).collect()
     }
-    fn peek(&self) -> Option<char> {
+    fn peek(&mut self) -> Option<char> {
         if self.pos < self.program.len() {
             return Some(self.program[self.pos]);
         }
         return None;
     }
-    fn peek_with_offset(&self, offset: usize) -> Option<char> {
+    fn peek_with_offset(&mut self, offset: usize) -> Option<char> {
         let pos = self.pos+offset;
         if pos < self.program.len() {
             return Some(self.program[pos]);
         }
         return None;
     }
-    fn peek_until_no_alphabetic(&self) -> String {
+    fn peek_until_no_alphabetic(&mut self) -> String {
         let mut pos = self.pos;
         let mut acc = String::new();
         while self.program[pos].is_ascii_alphabetic() {
@@ -346,6 +348,17 @@ impl TokenParser {
                         '^'  => Some(OperatorType::Exponential),
                         _ => None
                     },
+                    value: Some(format!("{}", c))
+                });
+                self.digest();
+            }
+            else if c == '!' {
+                tokens.push(Token {
+                    start: self.column-1,
+                    end: self.column,
+                    line: self.line,
+                    token_type: TokenType::UnaryOperator,
+                    operator_type: None,
                     value: Some(format!("{}", c))
                 });
                 self.digest();
