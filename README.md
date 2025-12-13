@@ -24,7 +24,7 @@ let cos_result = cos(30);
 let value = to_number(readln("Insert value: "));
 
 if (value) {
-    // Scope variables
+    // Scope variable
     let value = "Scope value";
 
     // Print variable a
