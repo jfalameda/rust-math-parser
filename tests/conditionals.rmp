@@ -1,0 +1,13 @@
+let a = 1;
+
+if (a == 1) {
+    println("a: " + a);
+} 
+if (!true == false) {
+    println("It is false");
+} else {
+    println("It is not false");
+}
+
+if (true)
+    println("It is true!");
