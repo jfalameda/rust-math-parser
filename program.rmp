@@ -30,6 +30,8 @@ if (value2) {
     // Testing scope asignment
     let value2 = "New value 2";
     println(value2);
+    // Top scope variables should be accessible
+    println("Parent scope variable: " + value);
 }
 
 println(value2);
