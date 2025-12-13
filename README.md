@@ -23,13 +23,20 @@ let cos_result = cos(30);
 
 let value = to_number(readln("Insert value: "));
 
-// Print variable a
-println("Result main: ", main_expr);
+if (value) {
+    // Scope variables
+    let value = "Scope value";
 
-// Concatenation using + symbol
-println("Result sin(x): " + sin_result);
+    // Print variable a
+    println("Result main: ", main_expr);
 
-println(str_concat("This ", "is ", "an ", "example"));
+    // Concatenation using + symbol
+    println("Result sin(x): " + sin_result);
+
+    println(str_concat("This ", "is ", "an ", "example"));
+} else {
+    println("Empty value");
+}
 
 ```
 
