@@ -41,11 +41,11 @@ fn main() {
     let mut parser = parser::Parser::new(tokens);
     let ast = parser.parse();
 
-    let ast = ast.unwrap_or_else(|err| {
+    let mut ast = ast.unwrap_or_else(|err| {
         panic!("{}", err);
     });
 
     // Interpreting the produced AST
-    let interpreter = Interpreter::new(ast);
-    interpreter.evaluate(None);
+    let mut interpreter = Interpreter::new();
+    interpreter.evaluate(Some(&ast));
 }

@@ -1,55 +1,65 @@
 use crate::error::error;
+use crate::interpreter::scope::{ScopeArena, ScopeId};
 use crate::node::{Block, Expression, Identifier, Literal, MethodCall, Operator, Program, UnaryOperator};
-use std::collections::{HashMap};
-use std::sync::Mutex;
-use once_cell::sync::Lazy;
 
 use super::methods::get_method;
 use super::value::{Value, Convert};
 
-static mut VARIABLES: Lazy<Mutex<HashMap<String, Value>>> = Lazy::new(|| {
-    let m = HashMap::new();
-    Mutex::new(m)
-});
-
 pub struct Interpreter {
-    ast: Box<Expression>
+    scope_arena: ScopeArena,
+    current_scope: ScopeId
 }
 
 
 impl Interpreter {
-    pub fn new(ast: Box<Expression>) -> Self {
-        Interpreter { ast }
-    }
-
-    pub fn evaluate(&self, node: Option<&Box<Expression>>) {
-        let node_content = node.unwrap_or(&self.ast).as_ref();
-        match node_content {
-            Expression::Program(program) => {
-                self.evaluate_program(program);
-            },
-            Expression::BinaryOperation(_, _, _) => {
-                self.evaluate_expression(node_content);
-            },
-            Expression::Statement(_) | Expression::Declaration(_, _) | Expression::MethodCall(_) => self.evaluate_statement(node_content),
-            Expression::IfConditional(expression, if_block, else_block) => self.evaluate_conditional(expression, if_block, else_block),
-            _ => error("Unexpected AST node.".to_string())
+    pub fn new() -> Self {
+        let mut scope_arena = ScopeArena::new();
+        let current_scope = scope_arena.new_scope(None);
+        Interpreter {
+            scope_arena,
+            current_scope
         }
     }
 
-    fn evaluate_program(&self, program: &Program) {
+    pub fn evaluate(&mut self, node: Option<&Box<Expression>>) {
+        if let Some(node_content) = node {
+            match node_content.as_ref() {
+                Expression::Program(program) => self.evaluate_program(program),
+                Expression::BinaryOperation(_, _, _) => { self.evaluate_expression(node_content); },
+                Expression::Statement(_) 
+                | Expression::Declaration(_, _) 
+                | Expression::MethodCall(_) => self.evaluate_statement(node_content),
+                Expression::IfConditional(expression, if_block, else_block) => {
+                    self.evaluate_conditional(expression, if_block, else_block)
+                },
+                _ => error("Unexpected AST node.".to_string()),
+            }
+        }
+    }
+
+    fn evaluate_program(&mut self, program: &Program) {
         let statements = &program.body;
 
         self.evaluate_block(statements);
     }
 
-    fn evaluate_block(&self, block: &Block) {
+    fn evaluate_block(&mut self, block: &Block) {
+        let parent_scope = self.current_scope;
+
+        let child_scope = self.scope_arena.new_scope(Some(parent_scope));
+
+        // Enter new scope
+        self.current_scope = child_scope;
+
         for statement in block {
             self.evaluate(Some(statement));
         }
+
+        // Exit scope
+        self.current_scope = parent_scope;
     }
 
-    fn evaluate_statement(&self, expression: &Expression) {
+    fn evaluate_statement(&mut self, expression: &Expression) {
         match expression {
             Expression::Statement(expr) => {
                 self.evaluate(Some(expr));
@@ -64,7 +74,7 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_conditional(&self, expression: &Expression, if_block: &Block, else_block: &Option<Block>) {
+    fn evaluate_conditional(&mut self, expression: &Expression, if_block: &Block, else_block: &Option<Block>) {
         let expression_result = self.evaluate_expression(expression);
         if expression_result.to_bool() {
             self.evaluate_block(&if_block);
@@ -74,15 +84,13 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_assignment(&self, identifier: &Identifier, expression: &Expression) {
+    fn evaluate_assignment(&mut self, identifier: &Identifier, expression: &Expression) {
 
         let value = self.evaluate_expression(expression);
-        unsafe {
-            VARIABLES.lock().unwrap().insert(identifier.name.to_string(), value);
-        }
+        self.scope_arena.define(self.current_scope, identifier.name.to_string(), value);
     }
 
-    fn evaluate_method_call(&self, node: &MethodCall) -> Value {
+    fn evaluate_method_call(&mut self, node: &MethodCall) -> Value {
 
         // Prepraring for having multiple arguments
         let args : Vec<Value> = node.arguments
@@ -93,14 +101,13 @@ impl Interpreter {
         return get_method(node.identifier.name.clone(), args);
     }
 
-    fn evaluate_expression(&self, node: &Expression) -> Value {
+    fn evaluate_expression(&mut self, node: &Expression) -> Value {
         if let Expression::Identifier(identifier) = node {
-            let value = identifier.name.to_string();
-            let result: Value;
-            unsafe {
-                result = VARIABLES.lock().unwrap().get(&value).unwrap().clone();
-            }
-            return result;
+            let identifier = identifier.name.to_string();
+            let result = self.scope_arena.lookup(self.current_scope, &identifier);
+
+            // Do we need to clone? What is the cost of it
+            return result.unwrap_or_else(|| error("Unrecognized node".to_string())).clone();
         }
         else if let Expression::Literal(literal) = node {
             // Preparing for having multiple types

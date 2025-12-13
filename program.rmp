@@ -26,6 +26,12 @@ let boolean_value = to_number(readln("Insert boolean value (0 false, 1 true): ")
 
 println(str_concat("This ", "is ", "an ", "example"));
 
+if (value2) {
+    // Testing scope asignment
+    let value2 = "New value 2";
+    println(value2);
+}
+
 println(value2);
 
 println(value3);
