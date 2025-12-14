@@ -56,7 +56,7 @@ impl ToString for TokenType {
 #[derive(PartialEq, Clone, Debug)]
 pub enum OperatorType {
     Additive,
-    Factorial,
+    Multiplicative,
     Exponential,
     Eq,
     Neq
@@ -76,7 +76,7 @@ impl Token {
     pub fn operator_predecende(self) -> (i32, bool) {
         match self.operator_type {
             Some(OperatorType::Additive) => (1, false),
-            Some(OperatorType::Factorial) => (2, false),
+            Some(OperatorType::Multiplicative) => (2, false),
             Some(OperatorType::Exponential) => (3, true),
             Some(OperatorType::Eq | OperatorType::Neq) => (4, false),
             None => (1, false),
@@ -113,16 +113,44 @@ impl TokenParser {
         }
         return ch;
     }
-    fn digest_n(&mut self, number_of_tokens: u32) -> String {
+    fn digest_n(&mut self, number_of_tokens: usize) -> String {
         (0..number_of_tokens).map(|_| {
             self.digest()
         }).collect()
+    }
+    fn digest_keyword(&mut self, keyword: &str, token_type: TokenType) -> Option<Token> {
+        // Check if the upcoming characters match the keyword
+        let peeked = self.peek_ahead(keyword.len());
+        if peeked == keyword {
+            let start_col = self.column;
+            self.digest_n(keyword.len()); // advance the parser
+            return Some(Token {
+                start: start_col,
+                end: self.column,
+                line: self.line,
+                token_type,
+                value: Some(keyword.to_string()),
+                operator_type: None,
+            });
+        }
+        None
     }
     fn peek(&mut self) -> Option<char> {
         if self.pos < self.program.len() {
             return Some(self.program[self.pos]);
         }
         return None;
+    }
+    fn peek_ahead(&self, n: usize) -> String {
+        let mut s = String::new();
+        for i in 0..n {
+            if self.pos + i < self.program.len() {
+                s.push(self.program[self.pos + i]);
+            } else {
+                break;
+            }
+        }
+        s
     }
     fn peek_with_offset(&mut self, offset: usize) -> Option<char> {
         let pos = self.pos+offset;
@@ -134,7 +162,7 @@ impl TokenParser {
     fn peek_until_no_alphabetic(&mut self) -> String {
         let mut pos = self.pos;
         let mut acc = String::new();
-        while self.program[pos].is_ascii_alphabetic() {
+        while pos < self.program.len() && self.program[pos].is_ascii_alphabetic() {
             acc.push(self.program[pos]);
             pos += 1;
         }
@@ -207,65 +235,20 @@ impl TokenParser {
                     })
                 }
             }
-            // TODO: I need a better way to handle this, particularly so that
-            // it can provide more actionable lexer errors.
-            else if c == 'i' &&  self.peek_until_no_alphabetic() == "if" {
-                let pos = self.column;
-                self.digest_n(2);
-                tokens.push(Token {
-                    start: pos,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::ConditionalIf,
-                    value: Some("if".to_string()),
-                    operator_type: None
-                })
+            else if let Some(token) = self.digest_keyword("if", TokenType::ConditionalIf) {
+                tokens.push(token);
             }
-            else if c == 'e' && self.peek_until_no_alphabetic() == "else" {
-                let pos = self.column;
-                self.digest_n(4);
-                tokens.push(Token {
-                    start: pos,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::ConditionalElse,
-                    value: Some("else".to_string()),
-                    operator_type: None
-                })
+            else if let Some(token) = self.digest_keyword("else", TokenType::ConditionalElse) {
+                tokens.push(token);
             }
-            else if c == 'l' && self.peek_until_no_alphabetic() == "let" {
-                let pos = self.column;
-                self.digest_n(3);
-                tokens.push(Token {
-                    start: pos,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::Declaration,
-                    value: Some("let".to_string()),
-                    operator_type: None
-                })
+            else if let Some(token) = self.digest_keyword("let", TokenType::Declaration) {
+                tokens.push(token);
             }
-            else if c == 't' && self.peek_until_no_alphabetic() == "true" {
-                self.digest_n(4);
-                tokens.push(Token {
-                    start: self.column-4,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::BooleanLiteral,
-                    value: Some("true".to_string()),
-                    operator_type: None
-                });
+            else if let Some(token) = self.digest_keyword("true", TokenType::BooleanLiteral) {
+                tokens.push(token);
             }
-            else if c == 'f' && self.peek_until_no_alphabetic() == "false" {
-                self.digest_n(5);
-                tokens.push(Token {
-                    start: self.column-5,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::BooleanLiteral,
-                    value: Some("false".to_string()),
-                    operator_type: None
-                });
+            else if let Some(token) = self.digest_keyword("false", TokenType::BooleanLiteral) {
+                tokens.push(token);
             }
             else if c == '"' {
                 let pos = self.column;
@@ -289,6 +272,7 @@ impl TokenParser {
                                
             }
             // Anything else alphanumeric not processed, process as symbol
+            // Symbols should be processed before this conditional
             else if c.is_ascii_alphabetic() {
                 let pos = self.column;
                 let mut symbol = format!("{}", self.digest());
@@ -312,11 +296,12 @@ impl TokenParser {
                 let pos = self.column;
                 let mut number = format!("{}", self.digest());
                 let mut is_floating: bool = false;
-                while self.peek().unwrap_or_default().is_numeric() || self.peek().unwrap_or_default() == '.' {
-                    if self.peek().unwrap_or_default() == '.' {
+                while let Some(next) = self.peek() {
+                    if next.is_numeric() {
+                        number.push(self.digest());
+                    } else if next == '.' {
                         if is_floating {
                             number.push(self.digest());
-
                             return Err(LexerInvalidTokenError {
                                 kind: LexerInvalidTokenKind::MalformedNumberLiteral(number),
                                 line: self.line,
@@ -324,8 +309,10 @@ impl TokenParser {
                             });
                         }
                         is_floating = true;
+                        number.push(self.digest());
+                    } else {
+                        break;
                     }
-                    number.push(self.digest());
                 }
                 tokens.push(Token {
                     start: pos,
@@ -344,7 +331,7 @@ impl TokenParser {
                     token_type: TokenType::Operator,
                     operator_type: match c {
                         '+' | '-' => Some(OperatorType::Additive),
-                        '*' | '/' => Some(OperatorType::Factorial),
+                        '*' | '/' => Some(OperatorType::Multiplicative),
                         '^'  => Some(OperatorType::Exponential),
                         _ => None
                     },
