@@ -159,15 +159,6 @@ impl TokenParser {
         }
         return None;
     }
-    fn peek_until_no_alphabetic(&mut self) -> String {
-        let mut pos = self.pos;
-        let mut acc = String::new();
-        while pos < self.program.len() && self.program[pos].is_ascii_alphabetic() {
-            acc.push(self.program[pos]);
-            pos += 1;
-        }
-        return acc;
-    }
     pub fn parse(&mut self) -> Result<Vec<Token>, LexerInvalidTokenError> {
         let mut tokens = vec![];
 
