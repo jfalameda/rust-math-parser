@@ -118,22 +118,30 @@ impl TokenParser {
             self.digest()
         }).collect()
     }
-    fn digest_keyword(&mut self, keyword: &str, token_type: TokenType) -> Option<Token> {
-        // Check if the upcoming characters match the keyword
-        let peeked = self.peek_ahead(keyword.len());
-        if peeked == keyword {
-            let start_col = self.column;
-            self.digest_n(keyword.len()); // advance the parser
-            return Some(Token {
-                start: start_col,
-                end: self.column,
-                line: self.line,
-                token_type,
-                value: Some(keyword.to_string()),
-                operator_type: None,
-            });
+    fn digest_string<F>(&mut self, s: &str, f: F) -> Option<Token>
+    where
+        F: Fn(usize, usize, usize, &str) -> Token,
+    {
+        for (i, c) in s.chars().enumerate() {
+            if self.peek_with_offset(i)? != c {
+                return None; // mismatch
+            }
         }
-        None
+
+        let start_col = self.column;
+        self.digest_n(s.len());
+
+        Some(f(start_col, self.column, self.line, s))
+    }
+    fn digest_keyword(&mut self, keyword: &str, token_type: TokenType) -> Option<Token> {
+        self.digest_string(keyword, |start, end, line, value| Token {
+            start,
+            end,
+            line,
+            token_type: token_type.clone(),
+            value: Some(value.to_string()),
+            operator_type: None,
+        })
     }
     fn peek(&mut self) -> Option<char> {
         if self.pos < self.program.len() {
