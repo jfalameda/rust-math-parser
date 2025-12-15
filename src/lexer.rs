@@ -14,6 +14,7 @@ pub enum TokenType {
     ParenthesisL,
     ParenthesisR,
     Declaration,
+    FunctionDeclaration,
     Symbol,
     Assignment,
     EndOfstatement,
@@ -35,6 +36,7 @@ impl ToString for TokenType {
             TokenType::ParenthesisL => "ParenthesisL",
             TokenType::ParenthesisR => "ParenthesisR",
             TokenType::Declaration => "Declaration",
+            TokenType::FunctionDeclaration => "FunctionDeclaration",
             TokenType::Symbol => "Symbol",
             TokenType::Assignment => "Assignment",
             TokenType::EndOfstatement => "EndOfStatement",
@@ -313,6 +315,7 @@ impl TokenParser {
                     let token_type = match text {
                         "if" => TokenType::ConditionalIf,
                         "else" => TokenType::ConditionalElse,
+                        "func" => TokenType::FunctionDeclaration,
                         "let" => TokenType::Declaration,
                         "true" | "false" => TokenType::BooleanLiteral,
                         _ => TokenType::Symbol,

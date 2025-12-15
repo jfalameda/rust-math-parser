@@ -26,6 +26,14 @@ pub struct MethodCall
     pub arguments: Vec<Box<Expression>>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionDeclaration
+{
+    pub identifier: Identifier,
+    pub arguments: Vec<Identifier>,
+    pub block: Block
+}
+
 pub type Block = Vec<Box<Expression>>;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -39,6 +47,7 @@ pub enum Expression {
     Identifier(Identifier),
     Declaration(Identifier, Box<Expression>),
     Block(Block),
+    FunctionDeclaration(FunctionDeclaration),
     IfConditional(Box<Expression>, Block, Option<Block>)
 }
 
@@ -65,6 +74,14 @@ pub fn build_assignment_node(identifier: String, expr: Box<Expression>) -> Box<E
     return Box::new(Expression::Declaration(Identifier { name: identifier }, expr));
 }
 
+pub fn build_function_declaration_node(identifier: String, args: Vec<String>, block: Block) -> Box<Expression> {
+    return Box::new(Expression::FunctionDeclaration(FunctionDeclaration {
+        identifier: Identifier { name: identifier },
+        // TODO: How can I prevent cloning?
+        arguments: args.iter().map(|arg| Identifier { name: arg.clone() }).collect(),
+        block,
+    }));
+}
 
 pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Box<Expression>>) -> Box<Expression> {
     let value = String::from(token.value.as_ref().unwrap());

@@ -1,6 +1,8 @@
+use std::str::ParseBoolError;
+
 use crate::lexer::{self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype};
 use crate::node::{
-    Block, Expression, build_assignment_node, build_conditional_node, build_method_call_node, build_node, build_program_node, build_statement_node, build_unary_node
+    Block, Expression, build_assignment_node, build_conditional_node, build_function_declaration_node, build_method_call_node, build_node, build_program_node, build_statement_node, build_unary_node
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -24,6 +26,12 @@ fn error_unrecognized_token(token: &Token) -> ParserError {
 fn error_eof() -> ParserError {
     ParserError {
         kind: ParserErrorKind::UnexpectedEOF,
+    }
+}
+
+fn error_unexpected_empty_value() -> ParserError {
+    ParserError {
+        kind: ParserErrorKind::UnexpectedEmptyValue,
     }
 }
 
@@ -60,13 +68,62 @@ impl Parser {
 
     fn consume_statement_terminator(&mut self, stmt: &Box<Expression>) -> Result<(), ParserError> {
         match stmt.as_ref() {
-            Expression::IfConditional(_, _, _) => Ok(()),
+            Expression::IfConditional(_, _, _) | Expression::FunctionDeclaration(_)=> Ok(()),
             _ => {
                 self.digest(TokenType::EndOfstatement)?;
                 Ok(())
             },
         }
-}
+    }
+
+    fn parse_function_declaration(&mut self) -> Result<Box<Expression>, ParserError> {
+        self.digest(TokenType::FunctionDeclaration)?;
+
+        let identifier = self.digest(TokenType::Symbol)?;
+
+        self.digest(TokenType::ParenthesisL)?;
+
+        let mut args = vec![];
+        
+        while let Some(token) = self.peek(None) {
+            if token.token_type == TokenType::ParenthesisR {
+                break;
+            }
+            
+            // Function arguments
+            args.push(
+                self.digest(TokenType::Symbol)?
+                    .value
+                    .ok_or_else(error_unexpected_empty_value)?
+            );
+
+            // If next is not ')', expect a comma
+            if let Some(next) = self.peek(None) {
+                if next.token_type != TokenType::ParenthesisR {
+                    self.digest(TokenType::ArgumentSeparator)?;
+                }
+            } else {
+                return Err(error_eof());
+            }
+        }
+
+        self.digest(TokenType::ParenthesisR)?;
+
+        let block = self.parse_block_with_delimiters()?;
+
+        let identifier = identifier.value.ok_or_else(error_unexpected_empty_value)?;
+
+        Ok(build_function_declaration_node(identifier, args, block))
+        
+    }
+
+    fn parse_block_with_delimiters(&mut self) -> Result<Block, ParserError> {
+        self.digest(TokenType::BlockStart)?;
+        let block = self.parse_block()?;
+        self.digest(TokenType::BlockEnd)?;
+
+        Ok(block)
+    }
 
     fn parse_block(&mut self) -> Result<Block, ParserError> {
         let mut body = vec![];
@@ -97,9 +154,10 @@ impl Parser {
             | TokenType::BooleanLiteral
             | TokenType::Operator
             | TokenType::Symbol
-            | TokenType::StringLiteral => Ok(self.parse_expression(0)?),
-            TokenType::Declaration     => Ok(self.parse_declaration()?),
-            TokenType::ConditionalIf   => Ok(self.parse_conditional()?),
+            | TokenType::StringLiteral     => Ok(self.parse_expression(0)?),
+            TokenType::Declaration         => Ok(self.parse_declaration()?),
+            TokenType::FunctionDeclaration => Ok(self.parse_function_declaration()?),
+            TokenType::ConditionalIf       => Ok(self.parse_conditional()?),
             _ => Err(error_unrecognized_token(token)),
         }?;
 
@@ -134,9 +192,8 @@ impl Parser {
     fn parse_statement_or_block(&mut self)  -> Result<Block, ParserError> {
         // If can be followed either by a block or by a simple statement
         if self.peek_type_is(TokenType::BlockStart) {
-            self.digest(TokenType::BlockStart)?;
-            let if_block = self.parse_block()?;
-            self.digest(TokenType::BlockEnd)?;
+            let if_block = self.parse_block_with_delimiters()?;
+            
             Ok(if_block)
         }
         else {

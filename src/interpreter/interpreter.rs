@@ -3,7 +3,7 @@ use std::ops::Deref;
 use crate::error::error;
 use crate::interpreter::scope::{ScopeArena, ScopeId};
 use crate::lexer::{AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype};
-use crate::node::{Block, Expression, Identifier, Literal, MethodCall, Program};
+use crate::node::{Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program};
 
 use super::methods::get_method;
 use super::value::{Value, Convert};
@@ -34,6 +34,9 @@ impl Interpreter {
                 | Expression::MethodCall(_) => self.evaluate_statement(node_content),
                 Expression::IfConditional(expression, if_block, else_block) => {
                     self.evaluate_conditional(expression, if_block, else_block)
+                },
+                Expression::FunctionDeclaration(function_declaration) => {
+                    self.evaluate_function_definition(function_declaration);
                 },
                 _ => error("Unexpected AST node."),
             }
@@ -90,24 +93,40 @@ impl Interpreter {
     fn evaluate_assignment(&mut self, identifier: &Identifier, expression: &Expression) {
 
         let value = self.evaluate_expression(expression);
-        self.scope_arena.define(self.current_scope, identifier.name.to_string(), value);
+        self.scope_arena.define_variable(self.current_scope, identifier.name.to_string(), value);
+    }
+
+    fn evaluate_function_definition(&mut self, node: &FunctionDeclaration) {
+        self.scope_arena.define_function(self.current_scope, node.identifier.name.clone(), node.clone());
     }
 
     fn evaluate_method_call(&mut self, node: &MethodCall) -> Value {
+        let method_name = node.identifier.name.clone();
 
-        // Prepraring for having multiple arguments
-        let args : Vec<Value> = node.arguments
-            .iter()
-            .map(|expr| self.evaluate_expression(expr))
-            .collect();
+        let code_defined_function = self.scope_arena.lookup_function(self.current_scope, &method_name);
 
-        return get_method(node.identifier.name.clone(), args);
+        if let Some(function) = code_defined_function {
+            // TODO: Avoid cloning here
+            // Find a way to inject the method parameters into the scope
+            self.evaluate_block(&function.block.clone());
+            
+            return Value::Integer(0);
+        }
+        else {
+            // Prepraring for having multiple arguments
+            let args : Vec<Value> = node.arguments
+                .iter()
+                .map(|expr| self.evaluate_expression(expr))
+                .collect();
+
+            return get_method(method_name, args);
+        }
     }
 
     fn evaluate_expression(&mut self, node: &Expression) -> Value {
         if let Expression::Identifier(identifier) = node {
             let identifier = identifier.name.to_string();
-            let result = self.scope_arena.lookup(self.current_scope, &identifier);
+            let result = self.scope_arena.lookup_variable(self.current_scope, &identifier);
 
             // Do we need to clone? What is the cost of it
             return result.unwrap_or_else(|| error("Unrecognized node")).clone();

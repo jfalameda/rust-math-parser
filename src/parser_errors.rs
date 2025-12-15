@@ -6,7 +6,8 @@ use crate::lexer::Token;
 pub enum ParserErrorKind {
     UnrecognizedToken(Token),
     UnexpectedToken(String, Token),
-    UnexpectedEOF
+    UnexpectedEOF,
+    UnexpectedEmptyValue
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +28,9 @@ impl fmt::Display for ParserErrorKind {
             }
             ParserErrorKind::UnexpectedEOF => {
                 write!(f, "Parser error: Unexpected error, no more tokens to parse")
+            }
+            ParserErrorKind::UnexpectedEmptyValue => {
+                write!(f, "Parser error: Unexpected empty value")
             }
         }
     }

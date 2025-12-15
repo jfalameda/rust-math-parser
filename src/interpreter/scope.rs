@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::interpreter::value::Value;
+use crate::{interpreter::value::Value, node::FunctionDeclaration};
 
 
 pub type ScopeId = usize;
@@ -9,6 +9,7 @@ pub type ScopeId = usize;
 pub struct Scope {
     parent: Option<ScopeId>,
     variables: HashMap<String, Value>,
+    functions: HashMap<String, FunctionDeclaration>
 }
 
 #[derive(Debug)]
@@ -25,24 +26,36 @@ impl ScopeArena {
         let scope = Scope {
             parent,
             variables: HashMap::new(),
+            functions: HashMap::new()
         };
 
         self.scopes.push(scope);
         self.scopes.len() - 1
     }
 
-    pub fn define(
+    pub fn define_variable(
         &mut self,
         scope_id: ScopeId,
         name: impl Into<String>,
-        value: Value,
+        value: Value
     ) {
         self.scopes[scope_id]
             .variables
             .insert(name.into(), value);
     }
 
-    pub fn lookup(&self, mut scope_id: ScopeId, name: &str) -> Option<&Value> {
+    pub fn define_function(
+        &mut self,
+        scope_id: ScopeId,
+        name: impl Into<String>,
+        function: FunctionDeclaration
+    ) {
+        self.scopes[scope_id]
+            .functions
+            .insert(name.into(), function);
+    }
+
+    pub fn lookup_variable(&self, mut scope_id: ScopeId, name: &str) -> Option<&Value> {
         while let Some(scope) = self.scopes.get(scope_id) {
             if let Some(value) = scope.variables.get(name) {
                 return Some(value);
@@ -53,5 +66,18 @@ impl ScopeArena {
             }
         }
     None
-}
+    }
+
+    pub fn lookup_function(&self, mut scope_id: ScopeId, name: &str) -> Option<&FunctionDeclaration> {
+        while let Some(scope) = self.scopes.get(scope_id) {
+            if let Some(function) = scope.functions.get(name) {
+                return Some(function);
+            }
+            match scope.parent {
+                Some(parent) => scope_id = parent,
+                None => break,
+            }
+        }
+    None
+    }
 }
