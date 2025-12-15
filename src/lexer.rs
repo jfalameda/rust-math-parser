@@ -1,11 +1,9 @@
-use std::{ffi::os_str::Display, fmt, fs::OpenOptions};
-
 use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum NumeralType {
     Integer,
-    Float
+    Float,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -26,7 +24,7 @@ pub enum TokenType {
     ConditionalElse,
     BlockStart,
     BlockEnd,
-    Eof
+    Eof,
 }
 
 impl ToString for TokenType {
@@ -36,20 +34,21 @@ impl ToString for TokenType {
             TokenType::UnaryOperator => "UnaryOperator",
             TokenType::NumeralLiteral(_) => "NumeralLiteral",
             TokenType::BooleanLiteral => "BooleanLiteral",
-            TokenType::ParenthesisL => "ParanthesisL",
-            TokenType::ParenthesisR => "ParanthesisR",
+            TokenType::ParenthesisL => "ParenthesisL",
+            TokenType::ParenthesisR => "ParenthesisR",
             TokenType::Declaration => "Declaration",
             TokenType::Symbol => "Symbol",
-            TokenType::Assignment => "Assingment",
-            TokenType::EndOfstatement=> "EndOfStatement",
+            TokenType::Assignment => "Assignment",
+            TokenType::EndOfstatement => "EndOfStatement",
             TokenType::ArgumentSeparator => "ArgumentSeparator",
             TokenType::StringLiteral => "StringLiteral",
             TokenType::ConditionalIf => "ConditionalIf",
+            TokenType::ConditionalElse => "ConditionalElse",
             TokenType::BlockStart => "BlockStart",
             TokenType::BlockEnd => "BlockEnd",
-            TokenType::ConditionalElse => "ConditionalElse",
-            TokenType::Eof => "Eof"
-        }.to_string()
+            TokenType::Eof => "Eof",
+        }
+        .to_string()
     }
 }
 
@@ -59,7 +58,7 @@ pub enum OperatorType {
     Multiplicative,
     Exponential,
     Eq,
-    Neq
+    Neq,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -69,7 +68,7 @@ pub struct Token {
     pub line: usize,
     pub token_type: TokenType,
     pub operator_type: Option<OperatorType>,
-    pub value: Option<String>
+    pub value: Option<String>,
 }
 
 impl Token {
@@ -85,345 +84,287 @@ impl Token {
 }
 
 pub struct TokenParser {
-    pos : usize,
-    column : usize,
-    line : usize,
-    program : Vec<char>
+    pos: usize,    // byte offset
+    column: usize,
+    line: usize,
+    program: String,
 }
 
 impl TokenParser {
     pub fn new(program: String) -> Self {
-        TokenParser {
+        Self {
             pos: 0,
             column: 1,
             line: 1,
-            program: program.chars().collect()
+            program,
         }
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.program[self.pos..].chars().next()
+    }
+
+    fn peek_with_offset(&self, n: usize) -> Option<char> {
+        self.program[self.pos..].chars().nth(n)
     }
 
     fn digest(&mut self) -> char {
-        self.pos += 1;
-        let ch = self.program[self.pos-1];
-        if ch == '\n' {
+        let c = self.peek().unwrap();
+        self.pos += c.len_utf8();
+
+        if c == '\n' {
             self.line += 1;
             self.column = 1;
-        }
-        else {
+        } else {
             self.column += 1;
         }
-        return ch;
-    }
-    fn digest_n(&mut self, number_of_tokens: usize) -> String {
-        (0..number_of_tokens).map(|_| {
-            self.digest()
-        }).collect()
-    }
-    fn digest_string<F>(&mut self, s: &str, f: F) -> Option<Token>
-    where
-        F: Fn(usize, usize, usize, &str) -> Token,
-    {
-        for (i, c) in s.chars().enumerate() {
-            if self.peek_with_offset(i)? != c {
-                return None; // mismatch
-            }
-        }
 
-        let start_col = self.column;
-        self.digest_n(s.len());
+        c
+    }
 
-        Some(f(start_col, self.column, self.line, s))
+    fn slice_to_string(&self, start: usize) -> String {
+        self.program[start..self.pos].to_string()
     }
-    fn digest_keyword(&mut self, keyword: &str, token_type: TokenType) -> Option<Token> {
-        self.digest_string(keyword, |start, end, line, value| Token {
-            start,
-            end,
-            line,
-            token_type: token_type.clone(),
-            value: Some(value.to_string()),
-            operator_type: None,
-        })
-    }
-    fn peek(&mut self) -> Option<char> {
-        if self.pos < self.program.len() {
-            return Some(self.program[self.pos]);
-        }
-        return None;
-    }
-    fn peek_ahead(&self, n: usize) -> String {
-        let mut s = String::new();
-        for i in 0..n {
-            if self.pos + i < self.program.len() {
-                s.push(self.program[self.pos + i]);
-            } else {
-                break;
-            }
-        }
-        s
-    }
-    fn peek_with_offset(&mut self, offset: usize) -> Option<char> {
-        let pos = self.pos+offset;
-        if pos < self.program.len() {
-            return Some(self.program[pos]);
-        }
-        return None;
-    }
+
     pub fn parse(&mut self) -> Result<Vec<Token>, LexerInvalidTokenError> {
-        let mut tokens = vec![];
+        let mut tokens = Vec::with_capacity(self.program.len() / 2);
 
         while let Some(c) = self.peek() {
-            if c == ' ' || c == '\n' {
-                self.digest();
-            }
-            else if c == '/' && self.peek_with_offset(1).unwrap_or(' ') == '/' {
-                let next = self.peek_with_offset(1).unwrap();
-                if next == '/' {
-                    self.digest_n(2);
-                    while let Some(next) = self.peek() {
-                        if next == '\n' {
-                            self.digest();
+            match c {
+                ' ' | '\n' => {
+                    self.digest();
+                }
+
+                '/' if self.peek_with_offset(1) == Some('/') => {
+                    self.digest();
+                    self.digest();
+                    while let Some(ch) = self.peek() {
+                        self.digest();
+                        if ch == '\n' {
+                            break;
+                        }
+                    }
+                }
+
+                ';' => {
+                    let start = self.pos;
+                    self.digest();
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::EndOfstatement,
+                        operator_type: None,
+                        value: Some(";".to_string()),
+                    });
+                }
+
+                '!' if self.peek_with_offset(1) == Some('=') => {
+                    let start = self.pos;
+                    self.digest();
+                    self.digest();
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::Operator,
+                        operator_type: Some(OperatorType::Neq),
+                        value: Some("!=".to_string()),
+                    });
+                }
+
+                '=' => {
+                    let start = self.pos;
+                    self.digest();
+                    if self.peek() == Some('=') {
+                        self.digest();
+                        tokens.push(Token {
+                            start,
+                            end: self.pos,
+                            line: self.line,
+                            token_type: TokenType::Operator,
+                            operator_type: Some(OperatorType::Eq),
+                            value: Some("==".to_string()),
+                        });
+                    } else {
+                        tokens.push(Token {
+                            start,
+                            end: self.pos,
+                            line: self.line,
+                            token_type: TokenType::Assignment,
+                            operator_type: None,
+                            value: Some("=".to_string()),
+                        });
+                    }
+                }
+
+                '"' => {
+                    let start = self.pos;
+                    self.digest();
+                    while let Some(ch) = self.peek() {
+                        self.digest();
+                        if ch == '"' {
+                            break;
+                        }
+                    }
+                    let value = self.program[start + 1..self.pos - 1].to_string();
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::StringLiteral,
+                        operator_type: None,
+                        value: Some(value),
+                    });
+                }
+
+                'a'..='z' | 'A'..='Z' | '_' => {
+                    let start = self.pos;
+                    self.digest();
+                    while let Some(ch) = self.peek() {
+                        if !ch.is_ascii_alphanumeric() && ch != '_' {
                             break;
                         }
                         self.digest();
                     }
-                }
-            }
-            else if c == ';' {
-                self.digest();
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::EndOfstatement,
-                    value: Some(";".to_string()),
-                    operator_type: None
-                })
-            }
-            else if c == '!' && self.peek_with_offset(1) == Some('=') {
-                self.digest_n(2);
-                tokens.push(Token {
-                    start: self.column-2,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::Operator,
-                    value: Some("!=".to_string()),
-                    operator_type: Some(OperatorType::Neq)
-                })
-            }
-            else if c == '=' {
-                if self.peek_with_offset(1) == Some('=')
-                {
-                    self.digest_n(2);
+
+                    let text = &self.program[start..self.pos];
+                    let token_type = match text {
+                        "if" => TokenType::ConditionalIf,
+                        "else" => TokenType::ConditionalElse,
+                        "let" => TokenType::Declaration,
+                        "true" | "false" => TokenType::BooleanLiteral,
+                        _ => TokenType::Symbol,
+                    };
+
                     tokens.push(Token {
-                        start: self.column-2,
-                        end: self.column,
+                        start,
+                        end: self.pos,
                         line: self.line,
-                        token_type: TokenType::Operator,
-                        value: Some("==".to_string()),
-                        operator_type: Some(OperatorType::Eq)
-                    })
+                        token_type,
+                        operator_type: None,
+                        value: Some(text.to_string()),
+                    });
                 }
-                else {
+
+                '0'..='9' => {
+                    let start = self.pos;
+                    let mut is_float = false;
                     self.digest();
-                    tokens.push(Token {
-                        start: self.column-1,
-                        end: self.column,
-                        line: self.line,
-                        token_type: TokenType::Assignment,
-                        value: Some("=".to_string()),
-                        operator_type: None
-                    })
-                }
-            }
-            else if let Some(token) = self.digest_keyword("if", TokenType::ConditionalIf) {
-                tokens.push(token);
-            }
-            else if let Some(token) = self.digest_keyword("else", TokenType::ConditionalElse) {
-                tokens.push(token);
-            }
-            else if let Some(token) = self.digest_keyword("let", TokenType::Declaration) {
-                tokens.push(token);
-            }
-            else if let Some(token) = self.digest_keyword("true", TokenType::BooleanLiteral) {
-                tokens.push(token);
-            }
-            else if let Some(token) = self.digest_keyword("false", TokenType::BooleanLiteral) {
-                tokens.push(token);
-            }
-            else if c == '"' {
-                let pos = self.column;
-                self.digest();
-                let mut string : String = String::from("");
-                while let Some(d) = self.peek() {
-                    if d == '"' {
-                        self.digest();
-                        tokens.push(Token {
-                            start: pos,
-                            end: self.column,
-                            line: self.line,
-                            token_type: TokenType::StringLiteral,
-                            value: Some(string),
-                            operator_type: None
-                        });
-                        break;
-                    }
-                    string.push(self.digest());
-                }
-                               
-            }
-            // Anything else alphanumeric not processed, process as symbol
-            // Symbols should be processed before this conditional
-            else if c.is_ascii_alphabetic() {
-                let pos = self.column;
-                let mut symbol = format!("{}", self.digest());
-                while let Some(d) = self.peek() {
-                    if !d.is_ascii_alphanumeric() && !(d == '_') {
-                        break;
-                    }
-                    self.digest();
-                    symbol.push(d);
-                }
-                tokens.push(Token {
-                    start: pos,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::Symbol,
-                    value: Some(symbol),
-                    operator_type: None
-                })                
-            }
-            else if c.is_numeric() {
-                let pos = self.column;
-                let mut number = format!("{}", self.digest());
-                let mut is_floating: bool = false;
-                while let Some(next) = self.peek() {
-                    if next.is_numeric() {
-                        number.push(self.digest());
-                    } else if next == '.' {
-                        if is_floating {
-                            number.push(self.digest());
-                            return Err(LexerInvalidTokenError {
-                                kind: LexerInvalidTokenKind::MalformedNumberLiteral(number),
-                                line: self.line,
-                                column: self.column,
-                            });
+
+                    while let Some(ch) = self.peek() {
+                        match ch {
+                            '0'..='9' => {
+                                self.digest();
+                            }
+                            '.' if !is_float => {
+                                is_float = true;
+                                self.digest();
+                            }
+                            '.' => {
+                                return Err(LexerInvalidTokenError {
+                                    kind: LexerInvalidTokenKind::MalformedNumberLiteral(
+                                        self.slice_to_string(start),
+                                    ),
+                                    line: self.line,
+                                    column: self.column,
+                                });
+                            }
+                            _ => break,
                         }
-                        is_floating = true;
-                        number.push(self.digest());
-                    } else {
-                        break;
                     }
+
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::NumeralLiteral(if is_float {
+                            NumeralType::Float
+                        } else {
+                            NumeralType::Integer
+                        }),
+                        operator_type: None,
+                        value: Some(self.slice_to_string(start)),
+                    });
                 }
-                tokens.push(Token {
-                    start: pos,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::NumeralLiteral(if is_floating { NumeralType::Float } else { NumeralType::Integer }),
-                    value: Some(number),
-                    operator_type: None
-                })
-            }
-            else if c == '+' || c == '-' || c == '*' || c == '/' || c == '^' {
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::Operator,
-                    operator_type: match c {
+
+                '+' | '-' | '*' | '/' | '^' => {
+                    let start = self.pos;
+                    let op = self.digest();
+                    let operator_type = match op {
                         '+' | '-' => Some(OperatorType::Additive),
                         '*' | '/' => Some(OperatorType::Multiplicative),
-                        '^'  => Some(OperatorType::Exponential),
-                        _ => None
-                    },
-                    value: Some(format!("{}", c))
-                });
-                self.digest();
-            }
-            else if c == '!' {
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::UnaryOperator,
-                    operator_type: None,
-                    value: Some(format!("{}", c))
-                });
-                self.digest();
-            }
-            else if c == '(' {
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::ParenthesisL,
-                    value: Some(format!("{}", c)),
-                    operator_type: None
-                });
-                self.digest();
-            }
-            else if c == ')' {
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::ParenthesisR,
-                    value: Some(format!("{}", c)),
-                    operator_type: None
-                });
-                self.digest();
-            }
-            else if c == '{' {
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::BlockStart,
-                    value: Some(format!("{}", c)),
-                    operator_type: None
-                });
-                self.digest();
-            }
-            else if c == '}' {
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::BlockEnd,
-                    value: Some(format!("{}", c)),
-                    operator_type: None
-                });
-                self.digest();
-            }
-            else if c == ',' {
-                tokens.push(Token {
-                    start: self.column-1,
-                    end: self.column,
-                    line: self.line,
-                    token_type: TokenType::ArgumentSeparator,
-                    value: Some(format!("{}", c)),
-                    operator_type: None
-                });
-                self.digest();
-            }
-            else {
-                return Err(LexerInvalidTokenError {
-                    kind: LexerInvalidTokenKind::UnexpectedToken(c.to_string()),
-                    line: self.line,
-                    column: self.column,
-                });
+                        '^' => Some(OperatorType::Exponential),
+                        _ => None,
+                    };
+
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::Operator,
+                        operator_type,
+                        value: Some(self.slice_to_string(start)),
+                    });
+                }
+
+                '!' => {
+                    let start = self.pos;
+                    self.digest();
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::UnaryOperator,
+                        operator_type: None,
+                        value: Some("!".to_string()),
+                    });
+                }
+
+                '(' | ')' | '{' | '}' | ',' => {
+                    let start = self.pos;
+                    let ch = self.digest();
+                    let token_type = match ch {
+                        '(' => TokenType::ParenthesisL,
+                        ')' => TokenType::ParenthesisR,
+                        '{' => TokenType::BlockStart,
+                        '}' => TokenType::BlockEnd,
+                        ',' => TokenType::ArgumentSeparator,
+                        _ => unreachable!(),
+                    };
+
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type,
+                        operator_type: None,
+                        value: Some(self.slice_to_string(start)),
+                    });
+                }
+
+                _ => {
+                    return Err(LexerInvalidTokenError {
+                        kind: LexerInvalidTokenKind::UnexpectedToken(c.to_string()),
+                        line: self.line,
+                        column: self.column,
+                    });
+                }
             }
         }
+
         tokens.push(Token {
-            start: self.column,
-            end: self.column,
+            start: self.pos,
+            end: self.pos,
             line: self.line,
             token_type: TokenType::Eof,
+            operator_type: None,
             value: None,
-            operator_type: None
         });
-        return Ok(tokens);
+
+        Ok(tokens)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -462,7 +403,7 @@ mod tests {
             kind: LexerInvalidTokenKind::MalformedNumberLiteral(ref literal),
         ..
         }) = result {
-            assert_eq!(literal, "10..", "Lexer ingested invalid tokens");
+            assert_eq!(literal, "10.", "Lexer ingested invalid tokens");
         }
 
         Ok(())
