@@ -25,6 +25,6 @@ pub fn get_method(method_name: String, args: Vec<Value>) -> Value {
         "to_number" => fn_to_number(args),
         "sin" => fn_sin(args),
         "cos" => fn_cos(args),
-        _ => error(format!("Method not found: {}",  method_name))
+        _ => error(format!("Method not found: {}",  method_name).as_str())
     }
 }

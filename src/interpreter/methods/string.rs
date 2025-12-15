@@ -28,7 +28,7 @@ pub fn fn_to_number(args: Vec<Value>) -> Value {
                 Value::Float(f)
             } else {
                 // TODO: Proper runtine error handling
-                error(format!("Cannot convert string '{}' to number", s))
+                error(format!("Cannot convert string '{}' to number", s).as_str())
             }
         }
         _ => value.to_number(), // other types use existing coercion

@@ -19,7 +19,7 @@ fn main() {
     }
     else {
         if program_file.is_none() {
-            error("Program file is mandatory.".to_string());
+            error("Program file is mandatory.");
         }
     }
 

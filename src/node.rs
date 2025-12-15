@@ -1,21 +1,4 @@
-use crate::{error, lexer::{NumeralType, Token, TokenType}};
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Operator {
-    Sum,
-    Min,
-    Mul,
-    Div,
-    Exp,
-    Eq,
-    Neq
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum UnaryOperator {
-    Min,
-    Not
-}
+use crate::{error, lexer::{AdditiveOperatorSubtype, NumeralType, OperatorType, Token, TokenType, UnaryOperatorSubtype}};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
@@ -48,8 +31,8 @@ pub type Block = Vec<Box<Expression>>;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Literal(Literal),
-    BinaryOperation(Box<Expression>, Operator, Box<Expression>),
-    UnaryOperation(UnaryOperator, Box<Expression>),
+    BinaryOperation(Box<Expression>, OperatorType, Box<Expression>),
+    UnaryOperation(OperatorType, Box<Expression>),
     Program(Program), // Change to block?
     Statement(Box<Expression>),
     MethodCall(MethodCall),
@@ -57,19 +40,6 @@ pub enum Expression {
     Declaration(Identifier, Box<Expression>),
     Block(Block),
     IfConditional(Box<Expression>, Block, Option<Block>)
-}
-
-fn token_value_to_operator(value: String) -> Operator {
-    return match value.as_str() {
-        "+" => Operator::Sum,
-        "-" => Operator::Min,
-        "*" => Operator::Mul,
-        "/" => Operator::Div,
-        "^" => Operator::Exp,
-        "==" => Operator::Eq,
-        "!=" => Operator::Neq,
-        _  => error(format!("Unrecognized operator {}", value))
-    };
 }
 
 pub fn build_method_call_node(method_name: String, args: Vec<Box<Expression>>) -> Box<Expression> {
@@ -87,7 +57,7 @@ pub fn build_conditional_node(condition: Box<Expression>, if_block: Block, else_
     return Box::new(Expression::IfConditional(condition, if_block, else_block));
 }
 
-pub fn build_binary_op_node(operator: Operator, left: Box<Expression>, right: Box<Expression>) -> Box<Expression> {
+pub fn build_binary_op_node(operator: OperatorType, left: Box<Expression>, right: Box<Expression>) -> Box<Expression> {
     return Box::new(Expression::BinaryOperation(left, operator, right));
 }
 
@@ -106,21 +76,21 @@ pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Bo
             },
             TokenType::StringLiteral => build_numerical_literal_node(Literal::String(value.parse::<String>().unwrap())),
             TokenType::BooleanLiteral => build_numerical_literal_node(Literal::Boolean(value.parse::<bool>().unwrap())),
-            TokenType::Operator => build_binary_op_node(token_value_to_operator(value), left.unwrap(), right.unwrap()),
+            TokenType::Operator => {
+                if let Some(operator_type) = token.operator_type.clone() {
+                    build_binary_op_node(operator_type, left.unwrap(), right.unwrap())
+                } else {
+                    panic!("Unexpected operator type.")
+                }
+            },
             TokenType::Assignment => build_assignment_node(value, left.unwrap()),
             TokenType::Symbol => Box::new(Expression::Identifier(Identifier { name: value })),
             _ => panic!("Unexpected token type to process when building node.")
         };
 }
 
-pub fn build_unary_node(token: &Token, node: Box<Expression>) -> Box<Expression> {
-    // TODO: Do not rely on strings here
-    let operator = match token.value.as_deref() {
-        Some("-") => UnaryOperator::Min,
-        Some("!") => UnaryOperator::Not,
-        _ => panic!("Invalid unary operator"),
-    };
-    return Box::new(Expression::UnaryOperation(operator, node));
+pub fn build_unary_node(operation_type: UnaryOperatorSubtype, node: Box<Expression>) -> Box<Expression> {
+    return Box::new(Expression::UnaryOperation(OperatorType::Unary(operation_type), node));
 }
 
 pub fn build_program_node(body: Vec<Box<Expression>>) -> Box<Expression> {

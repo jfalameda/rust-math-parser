@@ -9,7 +9,6 @@ pub enum NumeralType {
 #[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
     Operator,
-    UnaryOperator,
     NumeralLiteral(NumeralType),
     BooleanLiteral,
     ParenthesisL,
@@ -31,7 +30,6 @@ impl ToString for TokenType {
     fn to_string(&self) -> String {
         match self {
             TokenType::Operator => "Operator",
-            TokenType::UnaryOperator => "UnaryOperator",
             TokenType::NumeralLiteral(_) => "NumeralLiteral",
             TokenType::BooleanLiteral => "BooleanLiteral",
             TokenType::ParenthesisL => "ParenthesisL",
@@ -53,12 +51,41 @@ impl ToString for TokenType {
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub enum OperatorType {
-    Additive,
-    Multiplicative,
-    Exponential,
+pub enum CompOperatorSubtype {
     Eq,
     Neq,
+    Gt,
+    Lt,
+    Gte,
+    Lte
+}
+
+
+#[derive(PartialEq, Clone, Debug)]
+pub enum AdditiveOperatorSubtype {
+    Add,
+    Sub
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub enum MultiplicativeOperatorSubtype {
+    Mul,
+    Div
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum UnaryOperatorSubtype {
+    Min,
+    Not
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub enum OperatorType {
+    Additive(AdditiveOperatorSubtype),
+    Multiplicative(MultiplicativeOperatorSubtype),
+    Exponential,
+    Comp(CompOperatorSubtype),
+    Unary(UnaryOperatorSubtype)
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -74,10 +101,11 @@ pub struct Token {
 impl Token {
     pub fn operator_predecende(self) -> (i32, bool) {
         match self.operator_type {
-            Some(OperatorType::Additive) => (1, false),
-            Some(OperatorType::Multiplicative) => (2, false),
+            Some(OperatorType::Additive(_)) => (1, false),
+            Some(OperatorType::Multiplicative(_)) => (2, false),
             Some(OperatorType::Exponential) => (3, true),
-            Some(OperatorType::Eq | OperatorType::Neq) => (4, false),
+            Some(OperatorType::Comp(_)) => (4, false),
+            Some(OperatorType::Unary(_)) => (1, false), // It does not apply for binary ops
             None => (1, false),
         }
     }
@@ -126,6 +154,10 @@ impl TokenParser {
         self.program[start..self.pos].to_string()
     }
 
+    fn slice_range_to_string(&self, start: usize, end: usize) -> String {
+        self.program[start..end].to_string()
+    }
+
     pub fn parse(&mut self) -> Result<Vec<Token>, LexerInvalidTokenError> {
         let mut tokens = Vec::with_capacity(self.program.len() / 2);
 
@@ -168,8 +200,31 @@ impl TokenParser {
                         end: self.pos,
                         line: self.line,
                         token_type: TokenType::Operator,
-                        operator_type: Some(OperatorType::Neq),
+                        operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Neq)),
                         value: Some("!=".to_string()),
+                    });
+                }
+                '>' => {
+                    let start = self.pos;
+                    self.digest();
+                    if self.peek_with_offset(1) == Some('=') {
+                        self.digest();
+                        tokens.push(Token {
+                            start,
+                            end: self.pos,
+                            line: self.line,
+                            token_type: TokenType::Operator,
+                            operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gte)),
+                            value: Some(">=".to_string()),
+                        });
+                    }
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::Operator,
+                        operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gt)),
+                        value: Some(">".to_string()),
                     });
                 }
 
@@ -183,7 +238,7 @@ impl TokenParser {
                             end: self.pos,
                             line: self.line,
                             token_type: TokenType::Operator,
-                            operator_type: Some(OperatorType::Eq),
+                            operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Eq)),
                             value: Some("==".to_string()),
                         });
                     } else {
@@ -207,7 +262,7 @@ impl TokenParser {
                             break;
                         }
                     }
-                    let value = self.program[start + 1..self.pos - 1].to_string();
+                    let value = self.slice_range_to_string(start + 1, self.pos - 1);
                     tokens.push(Token {
                         start,
                         end: self.pos,
@@ -292,8 +347,10 @@ impl TokenParser {
                     let start = self.pos;
                     let op = self.digest();
                     let operator_type = match op {
-                        '+' | '-' => Some(OperatorType::Additive),
-                        '*' | '/' => Some(OperatorType::Multiplicative),
+                        '+' => Some(OperatorType::Additive(AdditiveOperatorSubtype::Add)),
+                        '-' => Some(OperatorType::Additive(AdditiveOperatorSubtype::Sub)),
+                        '*' => Some(OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Mul)),
+                        '/' => Some(OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Div)),
                         '^' => Some(OperatorType::Exponential),
                         _ => None,
                     };
@@ -315,8 +372,8 @@ impl TokenParser {
                         start,
                         end: self.pos,
                         line: self.line,
-                        token_type: TokenType::UnaryOperator,
-                        operator_type: None,
+                        token_type: TokenType::Operator,
+                        operator_type: Some(OperatorType::Unary(UnaryOperatorSubtype::Not)),
                         value: Some("!".to_string()),
                     });
                 }

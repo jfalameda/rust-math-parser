@@ -1,4 +1,4 @@
-use crate::lexer::{self, Token, TokenType};
+use crate::lexer::{self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype};
 use crate::node::{
     Block, Expression, build_assignment_node, build_conditional_node, build_method_call_node, build_node, build_program_node, build_statement_node, build_unary_node
 };
@@ -225,19 +225,19 @@ impl Parser {
 
         match token.token_type {
             TokenType::Operator => {
-                match token.value.as_deref() {
-                    Some("-") => {
+                match token.operator_type {
+                    Some(OperatorType::Additive(AdditiveOperatorSubtype::Sub)) => {
                         self.digest(TokenType::Operator)?; // consume '-'
                         let literal = self.parse_term()?;
-                        Ok(build_unary_node(&token, literal))
+                        Ok(build_unary_node(UnaryOperatorSubtype::Min, literal))
+                    },
+                    Some(OperatorType::Unary(UnaryOperatorSubtype::Not)) => {
+                        self.digest(TokenType::Operator)?;
+                        let literal = self.parse_term()?;
+                        Ok(build_unary_node(UnaryOperatorSubtype::Not, literal))
                     }
-                    _ => Err(error_unrecognized_token(&token)),
+                    Some(_) | None => Err(error_unrecognized_token(&token))
                 }
-            }
-            TokenType::UnaryOperator => {
-                self.digest(TokenType::UnaryOperator)?;
-                let literal = self.parse_term()?;
-                Ok(build_unary_node(&token, literal))
             }
 
             TokenType::Symbol

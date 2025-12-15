@@ -47,7 +47,7 @@ impl Value {
                 } else if let Ok(f) = s.parse::<f64>() {
                     Value::Float(f)
                 } else {
-                    error(format!("Unable to convert string '{}' to number", s))
+                    error(format!("Unable to convert string '{}' to number", s).as_str())
                 }
             }
         }
@@ -58,7 +58,7 @@ impl Value {
         match self.to_number() {
             Value::Integer(i) => i as f64,
             Value::Float(f) => f,
-            other => error(format!("Expected numeric value, got {:?}", other)),
+            other => error(format!("Expected numeric value, got {:?}", other).as_str()),
         }
     }
 
@@ -179,7 +179,7 @@ impl ops::Add<Value> for Value {
                 return Value::String(format!("{}{}", ls, rs));
             } else {
                 // defensive fallback; shouldn't happen
-                return error("String concatenation failed.".to_string());
+                return error("String concatenation failed.");
             }
         }
 
@@ -225,7 +225,7 @@ impl ops::Div<Value> for Value {
 
         // guard divide by zero
         if rf == 0.0 {
-            error("Division by zero".to_string());
+            error("Division by zero");
         }
         Value::Float(lf / rf)
     }

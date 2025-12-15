@@ -1,6 +1,9 @@
+use std::ops::Deref;
+
 use crate::error::error;
 use crate::interpreter::scope::{ScopeArena, ScopeId};
-use crate::node::{Block, Expression, Identifier, Literal, MethodCall, Operator, Program, UnaryOperator};
+use crate::lexer::{AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype};
+use crate::node::{Block, Expression, Identifier, Literal, MethodCall, Program};
 
 use super::methods::get_method;
 use super::value::{Value, Convert};
@@ -32,7 +35,7 @@ impl Interpreter {
                 Expression::IfConditional(expression, if_block, else_block) => {
                     self.evaluate_conditional(expression, if_block, else_block)
                 },
-                _ => error("Unexpected AST node.".to_string()),
+                _ => error("Unexpected AST node."),
             }
         }
     }
@@ -70,7 +73,7 @@ impl Interpreter {
             Expression::MethodCall(method_call) => {
                 self.evaluate_method_call(method_call);
             },
-            _ => error("Unexpected AST node".to_string())
+            _ => error("Unexpected AST node")
         }
     }
 
@@ -107,7 +110,7 @@ impl Interpreter {
             let result = self.scope_arena.lookup(self.current_scope, &identifier);
 
             // Do we need to clone? What is the cost of it
-            return result.unwrap_or_else(|| error("Unrecognized node".to_string())).clone();
+            return result.unwrap_or_else(|| error("Unrecognized node")).clone();
         }
         else if let Expression::Literal(literal) = node {
             // Preparing for having multiple types
@@ -124,8 +127,9 @@ impl Interpreter {
         else if let Expression::UnaryOperation(operator, expr) = node {
             // Assuming is minus unary operator
             return match operator {
-                UnaryOperator::Min => Value::Float(-1.0) * self.evaluate_expression(expr),
-                UnaryOperator::Not => Value::Boolean(false) * self.evaluate_expression(expr)
+                OperatorType::Unary(UnaryOperatorSubtype::Min)=> Value::Float(-1.0) * self.evaluate_expression(expr),
+                OperatorType::Unary(UnaryOperatorSubtype::Not)=> Value::Boolean(false) * self.evaluate_expression(expr),
+                _ => error("Unexpected operator")
             }
         }
         else if let Expression::BinaryOperation(left, op, right) = node {
@@ -133,8 +137,9 @@ impl Interpreter {
             let left = self.evaluate_expression(left);
             let right = self.evaluate_expression(right);
     
+            // TODO: Is this needed now? I think the Value string ops covers it
             if matches!(left, Value::String(_)) || matches!(right, Value::String(_)) {
-                if matches!(op, Operator::Sum) {
+                if matches!(op, OperatorType::Additive(AdditiveOperatorSubtype::Add)) {
                     let mut left_str = String::convert(left.to_string()).unwrap();
                     let right = String::convert(right.to_string()).unwrap();
                     left_str.push_str(&right);
@@ -143,18 +148,26 @@ impl Interpreter {
             }
             
             return match op {
-                Operator::Exp => left.power(right),
-                Operator::Mul => left * right,
-                Operator::Div => left / right,
-                Operator::Min => left - right,
-                Operator::Sum => left + right,
-                Operator::Eq  => left.eq_value(&right),
-                Operator::Neq => left.neq_value(&right),
-
+                OperatorType::Exponential => left.power(right),
+                OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Mul) => left * right,
+                OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Div) => left / right,
+                OperatorType::Additive(AdditiveOperatorSubtype::Sub) => left - right,
+                OperatorType::Additive(AdditiveOperatorSubtype::Add) => left + right,
+                OperatorType::Comp(comp_type)  => {
+                    match comp_type {
+                        CompOperatorSubtype::Eq => left.eq_value(&right),
+                        CompOperatorSubtype::Neq => left.neq_value(&right),
+                        CompOperatorSubtype::Gt => left.neq_value(&right),
+                        CompOperatorSubtype::Lt => left.neq_value(&right),
+                        CompOperatorSubtype::Gte => left.neq_value(&right),
+                        CompOperatorSubtype::Lte => left.neq_value(&right),
+                    }
+                }
+                OperatorType::Unary(_) => error("Unary operatios unexpected")
             };
         }
         else {
-            error("Unrecognized node".to_string());
+            error("Unrecognized node");
         }
     }
 
