@@ -46,3 +46,5 @@ if (value) {
 - Check for undefined variables
 - Improve syntax errors
 - Add runtime errors
+- Find a better way to handle unary tokens and parsing. Right now binary and unary are mixed as Operators.
+- Prevent allocations with .clone()

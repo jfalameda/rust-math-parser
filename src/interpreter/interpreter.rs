@@ -157,10 +157,10 @@ impl Interpreter {
                     match comp_type {
                         CompOperatorSubtype::Eq => left.eq_value(&right),
                         CompOperatorSubtype::Neq => left.neq_value(&right),
-                        CompOperatorSubtype::Gt => left.neq_value(&right),
-                        CompOperatorSubtype::Lt => left.neq_value(&right),
-                        CompOperatorSubtype::Gte => left.neq_value(&right),
-                        CompOperatorSubtype::Lte => left.neq_value(&right),
+                        CompOperatorSubtype::Gt => left.gt_value(&right),
+                        CompOperatorSubtype::Lt => left.lt_value(&right),
+                        CompOperatorSubtype::Gte => left.gte_value(&right),
+                        CompOperatorSubtype::Lte => left.lte_value(&right),
                     }
                 }
                 OperatorType::Unary(_) => error("Unary operatios unexpected")

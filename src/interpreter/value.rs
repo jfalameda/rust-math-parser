@@ -104,6 +104,82 @@ impl Value {
         Value::Boolean(result)
     }
 
+    pub fn gt_value(&self, other: &Value) -> Value {
+        let result = match (self, other) {
+            // same-type
+            (Value::Integer(a), Value::Integer(b)) => a > b,
+            (Value::Float(a),   Value::Float(b))   => a > b,
+            (Value::String(a),  Value::String(b))  => a > b,
+            (Value::Boolean(a), Value::Boolean(b)) => a > b,
+            (Value::Empty,      Value::Empty)      => false,
+
+            // cross numeric
+            (Value::Integer(a), Value::Float(b)) => (*a as f64) > *b,
+            (Value::Float(a),   Value::Integer(b)) => *a > (*b as f64),
+
+            _ => false,
+        };
+
+        Value::Boolean(result)
+    }
+
+    pub fn gte_value(&self, other: &Value) -> Value {
+        let result = match (self, other) {
+            // same-type
+            (Value::Integer(a), Value::Integer(b)) => a >= b,
+            (Value::Float(a),   Value::Float(b))   => a >= b,
+            (Value::String(a),  Value::String(b))  => a >= b,
+            (Value::Boolean(a), Value::Boolean(b)) => a >= b,
+            (Value::Empty,      Value::Empty)      => false,
+
+            // cross numeric
+            (Value::Integer(a), Value::Float(b)) => (*a as f64) >= *b,
+            (Value::Float(a),   Value::Integer(b)) => *a >= (*b as f64),
+
+            _ => false,
+        };
+
+        Value::Boolean(result)
+    }
+
+    pub fn lt_value(&self, other: &Value) -> Value {
+        let result = match (self, other) {
+            // same-type
+            (Value::Integer(a), Value::Integer(b)) => a < b,
+            (Value::Float(a),   Value::Float(b))   => a < b,
+            (Value::String(a),  Value::String(b))  => a < b,
+            (Value::Boolean(a), Value::Boolean(b)) => a < b,
+            (Value::Empty,      Value::Empty)      => false,
+
+            // cross numeric
+            (Value::Integer(a), Value::Float(b)) => (*a as f64) < *b,
+            (Value::Float(a),   Value::Integer(b)) => *a < (*b as f64),
+
+            _ => false,
+        };
+
+        Value::Boolean(result)
+    }
+
+    pub fn lte_value(&self, other: &Value) -> Value {
+        let result = match (self, other) {
+            // same-type
+            (Value::Integer(a), Value::Integer(b)) => a <= b,
+            (Value::Float(a),   Value::Float(b))   => a <= b,
+            (Value::String(a),  Value::String(b))  => a <= b,
+            (Value::Boolean(a), Value::Boolean(b)) => a <= b,
+            (Value::Empty,      Value::Empty)      => false,
+
+            // cross numeric
+            (Value::Integer(a), Value::Float(b)) => (*a as f64) <= *b,
+            (Value::Float(a),   Value::Integer(b)) => *a <= (*b as f64),
+
+            _ => false,
+        };
+
+        Value::Boolean(result)
+    }
+
     pub fn neq_value(&self, other: &Value) -> Value {
         match self.eq_value(other) {
             Value::Boolean(b) => Value::Boolean(!b),

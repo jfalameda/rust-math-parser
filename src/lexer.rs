@@ -207,7 +207,7 @@ impl TokenParser {
                 '>' => {
                     let start = self.pos;
                     self.digest();
-                    if self.peek_with_offset(1) == Some('=') {
+                    if self.peek() == Some('=') {
                         self.digest();
                         tokens.push(Token {
                             start,
@@ -217,15 +217,41 @@ impl TokenParser {
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gte)),
                             value: Some(">=".to_string()),
                         });
+                    } else {
+                        tokens.push(Token {
+                            start,
+                            end: start,
+                            line: self.line,
+                            token_type: TokenType::Operator,
+                            operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gt)),
+                            value: Some(">".to_string()),
+                        });
                     }
-                    tokens.push(Token {
-                        start,
-                        end: self.pos,
-                        line: self.line,
-                        token_type: TokenType::Operator,
-                        operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gt)),
-                        value: Some(">".to_string()),
-                    });
+                }
+
+                '<' => {
+                    let start = self.pos;
+                    self.digest();
+                    if self.peek() == Some('=') {
+                        self.digest();
+                        tokens.push(Token {
+                            start,
+                            end: self.pos,
+                            line: self.line,
+                            token_type: TokenType::Operator,
+                            operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Lte)),
+                            value: Some("<=".to_string()),
+                        });
+                    } else {
+                        tokens.push(Token {
+                            start,
+                            end: self.pos,
+                            line: self.line,
+                            token_type: TokenType::Operator,
+                            operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Lt)),
+                            value: Some("<".to_string()),
+                        });
+                    }
                 }
 
                 '=' => {
