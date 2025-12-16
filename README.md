@@ -57,3 +57,6 @@ println("Multiplication: " + multiply(1, 2));
 - Find a better way to handle unary tokens and parsing. Right now binary and unary are mixed as Operators.
 - Prevent allocations with .clone()
 - Implement returns
+- Implement simple garbage collector
+- Implement simple structures as objects and arrays
+- Implement for and while
