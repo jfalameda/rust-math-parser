@@ -104,7 +104,6 @@ impl Interpreter {
     fn evaluate_method_call(&mut self, node: &MethodCall) -> Value {
         let method_name = &node.identifier.name;
 
-        // First: take ownership/clones of everything needed
         let (function_opt, arg_exprs) = {
             let func = self.scope_arena.lookup_function(self.current_scope, method_name).cloned();
             let args = node.arguments.clone();
@@ -118,6 +117,7 @@ impl Interpreter {
             let evaluated_args = self.evaluate_arguments(&arg_exprs);
 
             // Validate arity
+            // TODO: Create separate function
             if param_names.len() != evaluated_args.len() {
                 error(&format!(
                     "Function '{}' expected {} arguments, got {}",
@@ -128,6 +128,7 @@ impl Interpreter {
             }
 
             // Create a new scope for the function call
+            // TODO: Consider wrapper to create scopes
             let parent_scope = self.current_scope;
             let function_scope = self.scope_arena.new_scope(Some(parent_scope));
             self.current_scope = function_scope;
@@ -140,12 +141,10 @@ impl Interpreter {
             // Evaluate function body in the new scope
             self.evaluate_block(&function.block);
 
-            // Exit function scope
             self.current_scope = parent_scope;
 
             Value::Integer(0)
         } else {
-            // Built-in method call
             let args = self.evaluate_arguments(&node.arguments.clone());
             get_method(method_name.clone(), args)
         }
