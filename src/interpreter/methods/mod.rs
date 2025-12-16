@@ -15,16 +15,33 @@ use self::string::{fn_str_concat};
 
 use super::value::Value;
 
+pub type NativeFn = fn(Vec<Value>) -> Value;
 
-pub fn get_method(method_name: String, args: Vec<Value>) -> Value {
-    match method_name.as_str() {
-        "println" => fn_println(args),
-        "print" => fn_print(args),
-        "readln" => fn_readln(args),
-        "str_concat" => fn_str_concat(args),
-        "to_number" => fn_to_number(args),
-        "sin" => fn_sin(args),
-        "cos" => fn_cos(args),
-        _ => error(format!("Method not found: {}",  method_name).as_str())
+pub struct Method {
+    pub name: &'static str,
+    pub func: NativeFn,
+}
+
+inventory::collect!(Method);
+
+pub fn get_method(name: String, args: Vec<Value>) -> Value {
+    for method in inventory::iter::<Method> {
+        if method.name == name {
+            return (method.func)(args);
+        }
     }
+
+    error(format!("Method not found: {}", name).as_str())
+}
+
+#[macro_export]
+macro_rules! register_method {
+    ($name:expr, $func:path) => {
+        inventory::submit! {
+            $crate::interpreter::methods::Method {
+                name: $name,
+                func: $func,
+            }
+        }
+    };
 }

@@ -1,4 +1,4 @@
-use crate::{error, interpreter::value::{Convert, Value}};
+use crate::{error, interpreter::value::{Convert, Value}, register_method};
 
 pub fn fn_str_concat(args: Vec<Value>) -> Value {
     let mut concat_str = String::from("");
@@ -35,3 +35,5 @@ pub fn fn_to_number(args: Vec<Value>) -> Value {
     }
 }
 
+register_method!("str_concat", fn_str_concat);
+register_method!("to_number", fn_to_number);

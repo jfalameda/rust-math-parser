@@ -1,4 +1,4 @@
-use crate::interpreter::value::{Value, Convert};
+use crate::{interpreter::value::{Convert, Value}, register_method};
 
 pub fn fn_print(args: Vec<Value>) -> Value {
     args.iter().for_each(|arg| {
@@ -8,3 +8,5 @@ pub fn fn_print(args: Vec<Value>) -> Value {
 
     Value::Empty
 }
+
+register_method!("print", fn_print);

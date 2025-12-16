@@ -1,6 +1,6 @@
 use std::io::{stdout, Write, self, BufRead};
 
-use crate::interpreter::value::{Value, Convert};
+use crate::{interpreter::value::{Convert, Value}, register_method};
 
 pub fn fn_readln(args: Vec<Value>) -> Value {
     args.iter().for_each(|arg| {
@@ -21,3 +21,5 @@ pub fn fn_readln(args: Vec<Value>) -> Value {
     
     Value::String(line)
 }
+
+register_method!("readln", fn_readln);

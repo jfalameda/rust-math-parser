@@ -1,4 +1,4 @@
-use crate::interpreter::value::{Value, Convert};
+use crate::{interpreter::value::{Convert, Value}, register_method};
 
 pub fn fn_sin(args: Vec<Value>) -> Value {
     let number = args.get(0).unwrap();
@@ -15,3 +15,6 @@ pub fn fn_cos(args: Vec<Value>) -> Value {
 
     Value::Float(number.cos())
 }
+
+register_method!("sin", fn_sin);
+register_method!("cos", fn_cos);
