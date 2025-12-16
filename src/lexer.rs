@@ -24,6 +24,7 @@ pub enum TokenType {
     ConditionalElse,
     BlockStart,
     BlockEnd,
+    Return,
     Eof,
 }
 
@@ -46,6 +47,7 @@ impl ToString for TokenType {
             TokenType::ConditionalElse => "ConditionalElse",
             TokenType::BlockStart => "BlockStart",
             TokenType::BlockEnd => "BlockEnd",
+            TokenType::Return => "Return",
             TokenType::Eof => "Eof",
         }
         .to_string()
@@ -318,6 +320,7 @@ impl TokenParser {
                         "func" => TokenType::FunctionDeclaration,
                         "let" => TokenType::Declaration,
                         "true" | "false" => TokenType::BooleanLiteral,
+                        "return" => TokenType::Return,
                         _ => TokenType::Symbol,
                     };
 

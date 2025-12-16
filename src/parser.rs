@@ -2,7 +2,7 @@ use std::str::ParseBoolError;
 
 use crate::lexer::{self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype};
 use crate::node::{
-    Block, Expression, build_assignment_node, build_conditional_node, build_function_declaration_node, build_method_call_node, build_node, build_program_node, build_statement_node, build_unary_node
+    Block, Expression, build_assignment_node, build_conditional_node, build_function_declaration_node, build_method_call_node, build_node, build_program_node, build_return_node, build_statement_node, build_unary_node
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -158,6 +158,7 @@ impl Parser {
             TokenType::Declaration         => Ok(self.parse_declaration()?),
             TokenType::FunctionDeclaration => Ok(self.parse_function_declaration()?),
             TokenType::ConditionalIf       => Ok(self.parse_conditional()?),
+            TokenType::Return              => Ok(self.parse_return()?),
             _ => Err(error_unrecognized_token(token)),
         }?;
 
@@ -169,6 +170,11 @@ impl Parser {
         self.digest(TokenType::Assignment)?;
         let expr = self.parse_expression(0)?;
         Ok(build_assignment_node(symbol.value.ok_or_else(error_eof)?, expr))
+    }
+
+    fn parse_return(&mut self) -> Result<Box<Expression>, ParserError> {
+        self.digest(TokenType::Return)?;
+        Ok(build_return_node(self.parse_expression(0)?))
     }
 
     fn parse_conditional(&mut self) -> Result<Box<Expression>, ParserError> {

@@ -11,7 +11,11 @@ use super::value::{Value, Convert};
 
 pub struct Interpreter {
     scope_arena: ScopeArena,
-    current_scope: ScopeId
+    current_scope: ScopeId,
+
+    // TODO: Quick solution. Refactor later.
+    in_function: bool,
+    returned_value: Option<Value>,
 }
 
 
@@ -19,9 +23,14 @@ impl Interpreter {
     pub fn new() -> Self {
         let mut scope_arena = ScopeArena::new();
         let current_scope = scope_arena.new_scope(None);
+        let in_function: bool = false;
+        let returned_value = None;
+
         Interpreter {
             scope_arena,
-            current_scope
+            current_scope,
+            in_function,
+            returned_value
         }
     }
 
@@ -36,6 +45,7 @@ impl Interpreter {
                 Expression::IfConditional(expression, if_block, else_block) => {
                     self.evaluate_conditional(expression, if_block, else_block)
                 },
+                Expression::Return(_) => self.evaluate_return(node_content),
                 Expression::FunctionDeclaration(function_declaration) => {
                     self.evaluate_function_definition(function_declaration);
                 },
@@ -48,6 +58,19 @@ impl Interpreter {
         let statements = &program.body;
 
         self.evaluate_block(statements);
+    }
+
+    fn evaluate_return(&mut self, expression: &Expression) {
+        if self.in_function {
+            if let Expression::Return(inner_expression) = expression {
+                // Evaluate the inner expression and store the result
+                self.returned_value = Some(self.evaluate_expression(inner_expression));
+            } else {
+                error("Expected a return expression.");
+            }
+        } else {
+            error("Attempting to return outside a function block.");
+        }
     }
 
     fn evaluate_block(&mut self, block: &Block) {
@@ -138,12 +161,18 @@ impl Interpreter {
                 self.scope_arena.define_variable(self.current_scope, param.name, value);
             }
 
+            self.in_function = true;
+            self.returned_value = None;
+
             // Evaluate function body in the new scope
             self.evaluate_block(&function.block);
 
+            self.in_function = false;
+
+
             self.current_scope = parent_scope;
 
-            Value::Integer(0)
+            self.returned_value.clone().unwrap_or(Value::Integer(0))
         } else {
             let args = self.evaluate_arguments(&node.arguments.clone());
             get_method(method_name.clone(), args)
@@ -164,7 +193,8 @@ impl Interpreter {
             let result = self.scope_arena.lookup_variable(self.current_scope, &identifier);
 
             // Do we need to clone? What is the cost of it
-            return result.unwrap_or_else(|| error("Unrecognized node")).clone();
+            // TODO: Improve code
+            return result.unwrap_or_else(|| error(format!("Undefined variable {}", identifier).as_str())).clone();
         }
         else if let Expression::Literal(literal) = node {
             // Preparing for having multiple types
@@ -221,7 +251,7 @@ impl Interpreter {
             };
         }
         else {
-            error("Unrecognized node");
+            error(format!("Unrecognized node {:?}", node).as_str());
         }
     }
 

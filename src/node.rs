@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{error, lexer::{AdditiveOperatorSubtype, NumeralType, OperatorType, Token, TokenType, UnaryOperatorSubtype}};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -48,6 +50,7 @@ pub enum Expression {
     Declaration(Identifier, Box<Expression>),
     Block(Block),
     FunctionDeclaration(FunctionDeclaration),
+    Return(Box<Expression>),
     IfConditional(Box<Expression>, Block, Option<Block>)
 }
 
@@ -72,6 +75,10 @@ pub fn build_binary_op_node(operator: OperatorType, left: Box<Expression>, right
 
 pub fn build_assignment_node(identifier: String, expr: Box<Expression>) -> Box<Expression> {
     return Box::new(Expression::Declaration(Identifier { name: identifier }, expr));
+}
+
+pub fn build_return_node(expr: Box<Expression>) -> Box<Expression> {
+    return Box::new(Expression::Return(expr));
 }
 
 pub fn build_function_declaration_node(identifier: String, args: Vec<String>, block: Block) -> Box<Expression> {
