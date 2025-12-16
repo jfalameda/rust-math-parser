@@ -67,7 +67,7 @@ if (2 > 1) {
 }
 
 func test_function(param1, param2) {
-    println("Hola");
+    println("Param 1: " + param1 + " Param 2: " + param2);
 }
 
 test_function(1, 2);

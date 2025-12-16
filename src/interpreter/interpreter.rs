@@ -1,3 +1,4 @@
+use std::iter::Zip;
 use std::ops::Deref;
 
 use crate::error::error;
@@ -101,26 +102,61 @@ impl Interpreter {
     }
 
     fn evaluate_method_call(&mut self, node: &MethodCall) -> Value {
-        let method_name = node.identifier.name.clone();
+        let method_name = &node.identifier.name;
 
-        let code_defined_function = self.scope_arena.lookup_function(self.current_scope, &method_name);
+        // First: take ownership/clones of everything needed
+        let (function_opt, arg_exprs) = {
+            let func = self.scope_arena.lookup_function(self.current_scope, method_name).cloned();
+            let args = node.arguments.clone();
+            (func, args)
+        };
 
-        if let Some(function) = code_defined_function {
-            // TODO: Avoid cloning here
-            // Find a way to inject the method parameters into the scope
-            self.evaluate_block(&function.block.clone());
-            
-            return Value::Integer(0);
+        if let Some(function) = function_opt {
+            let param_names = function.arguments;
+
+            // Evaluate arguments now (mutable borrow allowed)
+            let evaluated_args = self.evaluate_arguments(&arg_exprs);
+
+            // Validate arity
+            if param_names.len() != evaluated_args.len() {
+                error(&format!(
+                    "Function '{}' expected {} arguments, got {}",
+                    method_name,
+                    param_names.len(),
+                    evaluated_args.len()
+                ));
+            }
+
+            // Create a new scope for the function call
+            let parent_scope = self.current_scope;
+            let function_scope = self.scope_arena.new_scope(Some(parent_scope));
+            self.current_scope = function_scope;
+
+            // Inject arguments as local variables
+            for (param, value) in param_names.into_iter().zip(evaluated_args.into_iter()) {
+                self.scope_arena.define_variable(self.current_scope, param.name, value);
+            }
+
+            // Evaluate function body in the new scope
+            self.evaluate_block(&function.block);
+
+            // Exit function scope
+            self.current_scope = parent_scope;
+
+            Value::Integer(0)
+        } else {
+            // Built-in method call
+            let args = self.evaluate_arguments(&node.arguments.clone());
+            get_method(method_name.clone(), args)
         }
-        else {
-            // Prepraring for having multiple arguments
-            let args : Vec<Value> = node.arguments
+    }
+
+    fn evaluate_arguments(&mut self, args: &Vec<Box<Expression>>) -> Vec<Value> {
+        let args : Vec<Value> = args
                 .iter()
                 .map(|expr| self.evaluate_expression(expr))
                 .collect();
-
-            return get_method(method_name, args);
-        }
+        return args;
     }
 
     fn evaluate_expression(&mut self, node: &Expression) -> Value {
