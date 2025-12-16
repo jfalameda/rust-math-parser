@@ -38,10 +38,12 @@ if (value) {
     println("Empty value");
 }
 
+// Function definition
 func multiply(a, b) {
     return a * b;
 }
 
+// Calling user defined function
 println("Multiplication: " + multiply(1, 2));
 
 ```
