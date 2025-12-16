@@ -1,5 +1,3 @@
-use std::str::ParseBoolError;
-
 use crate::lexer::{self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype};
 use crate::node::{
     Block, Expression, build_assignment_node, build_conditional_node, build_function_declaration_node, build_method_call_node, build_node, build_program_node, build_return_node, build_statement_node, build_unary_node
