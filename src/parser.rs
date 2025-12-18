@@ -229,7 +229,7 @@ impl Parser {
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
-        Ok(build_method_call_node(method_name.value.ok_or_else(error_eof)?, args))
+        Ok(build_method_call_node(method_name.value.ok_or_else(error_eof)?, args, method_name.line))
     }
 
     fn parse_method_args(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {

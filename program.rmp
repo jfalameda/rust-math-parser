@@ -80,6 +80,13 @@ println(add(1, 2));
 
 func sub(a, b) {
     let ret = a - b;
+
+    func sub2(a, b) {
+        return a - b;
+    }
+
+    sub2(1);
+
     return ret;
 }
 

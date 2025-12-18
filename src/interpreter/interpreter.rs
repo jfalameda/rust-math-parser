@@ -1,251 +1,237 @@
-use crate::error::error;
-use crate::interpreter::execution_context::ExecutionContext;
+use crate::interpreter::{
+    execution_context::ExecutionContext,
+    runtime_errors::{RuntimeError},
+};
 use crate::lexer::{AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype};
 use crate::node::{Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program};
-
 use super::methods::get_method;
 use super::value::{Value, Convert};
 
 pub struct Interpreter {
-    execution_context: ExecutionContext
+    execution_context: ExecutionContext,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        let execution_context = ExecutionContext::new();
-
         Interpreter {
-            execution_context
+            execution_context: ExecutionContext::new(),
         }
     }
 
-    pub fn evaluate(&mut self, node: Option<&Box<Expression>>) {
+    pub fn evaluate(&mut self, node: Option<&Box<Expression>>) -> Result<(), RuntimeError> {
         if let Some(node_content) = node {
             match node_content.as_ref() {
-                Expression::Program(program) => self.evaluate_program(program),
-                Expression::BinaryOperation(_, _, _) => { self.evaluate_expression(node_content); },
+                Expression::Program(program) => self.evaluate_program(program)?,
+                Expression::BinaryOperation(_, _, _) => { self.evaluate_expression(node_content)?; },
                 Expression::Statement(_) 
                 | Expression::Declaration(_, _) 
-                | Expression::MethodCall(_) => self.evaluate_statement(node_content),
+                | Expression::MethodCall(_) => self.evaluate_statement(node_content)?,
                 Expression::IfConditional(expression, if_block, else_block) => {
-                    self.evaluate_conditional(expression, if_block, else_block)
+                    self.evaluate_conditional(expression, if_block, else_block)?
                 },
-                Expression::Return(_) => self.evaluate_return(node_content),
+                Expression::Return(_) => self.evaluate_return(node_content)?,
                 Expression::FunctionDeclaration(function_declaration) => {
-                    self.evaluate_function_definition(function_declaration);
+                    self.evaluate_function_definition(function_declaration)?
                 },
-                _ => error("Unexpected AST node."),
+                _ => panic!("Unexpected AST node"),
             }
         }
+        Ok(())
     }
 
-    fn evaluate_program(&mut self, program: &Program) {
+    fn evaluate_program(&mut self, program: &Program) -> Result<(), RuntimeError> {
         let statements = &program.body;
-
-        self.evaluate_block(statements);
+        self.evaluate_block(statements)
     }
 
-    fn evaluate_return(&mut self, expression: &Expression) {
+    fn evaluate_return(&mut self, expression: &Expression) -> Result<(), RuntimeError> {
         if self.execution_context.is_in_function() {
             if let Expression::Return(inner_expression) = expression {
-                // Evaluate the inner expression and store the result
-                let value = self.evaluate_expression(inner_expression);
+                let value = self.evaluate_expression(inner_expression)?;
                 self.execution_context.set_return_value(value);
             } else {
-                error("Expected a return expression.");
+                return Err(self.error_with_stack("Expected a return expression"));
             }
         } else {
-            error("Attempting to return outside a function block.");
+            return Err(self.error_with_stack("Attempting to return outside a function block"));
         }
+        Ok(())
     }
 
-    fn evaluate_block(&mut self, block: &Block) {
+    fn evaluate_block(&mut self, block: &Block) -> Result<(), RuntimeError> {
         let (parent_scope, _) = self.execution_context.enter_new_scope();
-
         for statement in block {
-            self.evaluate(Some(statement));
+            self.evaluate(Some(statement))?;
         }
-
-        // Exit scope
         self.execution_context.restore_scope(parent_scope);
+        Ok(())
     }
 
-    fn evaluate_statement(&mut self, expression: &Expression) {
+    fn evaluate_statement(&mut self, expression: &Expression) -> Result<(), RuntimeError> {
         match expression {
-            Expression::Statement(expr) => {
-                self.evaluate(Some(expr));
-            }
-            Expression::Declaration(identifier, expr) => {
-                self.evaluate_assignment(identifier, expr);
-            },
-            Expression::MethodCall(method_call) => {
-                self.evaluate_method_call(method_call);
-            },
-            _ => error("Unexpected AST node")
+            Expression::Statement(expr) => self.evaluate(Some(expr))?,
+            Expression::Declaration(identifier, expr) => self.evaluate_assignment(identifier, expr)?,
+            Expression::MethodCall(method_call) => { self.evaluate_method_call(method_call)?; },
+            _ => return Err(self.error_with_stack("Unexpected AST node")),
         }
+        Ok(())
     }
 
-    fn evaluate_conditional(&mut self, expression: &Expression, if_block: &Block, else_block: &Option<Block>) {
-        let expression_result = self.evaluate_expression(expression);
+    fn evaluate_conditional(&mut self, expression: &Expression, if_block: &Block, else_block: &Option<Block>) -> Result<(), RuntimeError> {
+        let expression_result = self.evaluate_expression(expression)?;
         if expression_result.to_bool() {
-            self.evaluate_block(&if_block);
+            self.evaluate_block(&if_block)?;
+        } else if let Some(else_block) = else_block {
+            self.evaluate_block(&else_block)?;
         }
-        else if let Some(else_block) = else_block {
-            self.evaluate_block(&else_block);
-        }
+        Ok(())
     }
 
-    fn evaluate_assignment(&mut self, identifier: &Identifier, expression: &Expression) {
-
-        let value = self.evaluate_expression(expression);
-
-        self.execution_context.define_variable_in_scope(
-            &identifier.name,
-            value
-        );
+    fn evaluate_assignment(&mut self, identifier: &Identifier, expression: &Expression) -> Result<(), RuntimeError> {
+        let value = self.evaluate_expression(expression)?;
+        self.execution_context.define_variable_in_scope(&identifier.name, value)?;
+        Ok(())
     }
 
-    fn evaluate_function_definition(&mut self, node: &FunctionDeclaration) {
-        self.execution_context
-            .define_function_in_scope(
-                &node.identifier.name,
-                node.clone()
-            );
+    fn evaluate_function_definition(&mut self, node: &FunctionDeclaration) -> Result<(), RuntimeError> {
+        self.execution_context.define_function_in_scope(&node.identifier.name, node.clone())?;
+        Ok(())
     }
 
-    fn evaluate_method_call(&mut self, node: &MethodCall) -> Value {
+    fn evaluate_method_call(&mut self, node: &MethodCall) -> Result<Value, RuntimeError> {
         let method_name = &node.identifier.name;
 
         let (function_opt, arg_exprs) = {
-            let func = self.execution_context
-                .lookup_function_in_scope(
-                    method_name
-                );
-
+            let func = self.execution_context.lookup_function_in_scope(method_name);
             let args = node.arguments.clone();
             (func, args)
         };
 
         if let Some(function) = function_opt {
             let param_names = function.arguments;
-
-            // Evaluate arguments now (mutable borrow allowed)
-            let evaluated_args = self.evaluate_arguments(&arg_exprs);
+            let evaluated_args = self.evaluate_arguments(&arg_exprs)?;
 
             // Validate arity
-            // TODO: Create separate function and proper error handling
             if param_names.len() != evaluated_args.len() {
-                error(&format!(
-                    "Function '{}' expected {} arguments, got {}",
-                    method_name,
-                    param_names.len(),
-                    evaluated_args.len()
-                ));
+                return Err(self.error_with_stack(&format!(
+                        "Function '{}' expected {} arguments, got {}",
+                        method_name,
+                        param_names.len(),
+                        evaluated_args.len()
+                    ))
+                );
             }
 
-            // Create a new scope for the function call that will contain references
-            // to the function arguments.
-            // FunctionScope { variables: ...[param_names]; BlockScope { Code statemets }}
+            // Enter a new scope for the function
             let (parent_scope, _) = self.execution_context.enter_new_scope();
 
             // Inject arguments as local variables
             for (param, value) in param_names.into_iter().zip(evaluated_args.into_iter()) {
-                self.execution_context
-                    .define_variable_in_scope(
-                        &param.name,
-                        value
-                    );
+                self.execution_context.define_variable_in_scope(&param.name, value)?;
             }
+
+            self.execution_context.push_frame(method_name.clone(),Some(node.location));
 
             self.execution_context.enter_function();
 
-            self.evaluate_block(&function.block);
+            // Execute function block
+            self.evaluate_block(&function.block)?;
 
+            // Restore previous scope
             self.execution_context.restore_scope(parent_scope);
 
-            self.execution_context
+            // Get return value
+            let return_value = self
+                .execution_context
                 .exit_function_with_return()
-                .unwrap_or(Value::Integer(0))
+                .unwrap_or(Value::Integer(0));
+
+            self.execution_context.pop_frame();
+
+            Ok(return_value)
         } else {
-            let args = self.evaluate_arguments(&node.arguments.clone());
-            get_method(method_name.clone(), args)
+            // If function not found in scope, attempt to call built-in method
+            let args = self.evaluate_arguments(&node.arguments.clone())?;
+            Ok(get_method(method_name.clone(), args))
         }
     }
 
-    fn evaluate_arguments(&mut self, args: &Vec<Box<Expression>>) -> Vec<Value> {
-        let args : Vec<Value> = args
-                .iter()
-                .map(|expr| self.evaluate_expression(expr))
-                .collect();
-        return args;
+
+    fn evaluate_arguments(&mut self, args: &Vec<Box<Expression>>) -> Result<Vec<Value>, RuntimeError> {
+        let mut results = Vec::with_capacity(args.len());
+        for expr in args {
+            results.push(self.evaluate_expression(expr)?);
+        }
+        Ok(results)
     }
 
-    fn evaluate_expression(&mut self, node: &Expression) -> Value {
-        if let Expression::Identifier(identifier) = node {
-            let identifier = identifier.name.clone();
-            let result = self.execution_context.lookup_variable_in_scope(&identifier);
-
-            // Do we need to clone? What is the cost of it
-            // TODO: Improve code
-            return result.unwrap_or_else(|| error(format!("Undefined variable {}", identifier).as_str())).clone();
-        }
-        else if let Expression::Literal(literal) = node {
-            // Preparing for having multiple types
-            return match literal {
+    fn evaluate_expression(&mut self, node: &Expression) -> Result<Value, RuntimeError> {
+        match node {
+            Expression::Identifier(identifier) => {
+                let identifier = identifier.name.clone();
+                let result = self.execution_context.lookup_variable_in_scope(&identifier);
+                result
+                    .cloned()
+                    .ok_or_else(|| self.error_with_stack(&format!("Undefined variable {}", identifier)))
+            },
+            Expression::Literal(literal) => Ok(match literal {
                 Literal::Boolean(b) => Value::Boolean(*b),
                 Literal::Integer(i) => Value::Integer(*i),
                 Literal::Float(f) => Value::Float(*f),
-                Literal::String(s) => Value::String(s.to_string())
-            };
-        }
-        else if let Expression::MethodCall(method_call) = node {
-            return self.evaluate_method_call(method_call);
-        }
-        else if let Expression::UnaryOperation(operator, expr) = node {
-            // Assuming is minus unary operator
-            return match operator {
-                OperatorType::Unary(UnaryOperatorSubtype::Min)=> Value::Float(-1.0) * self.evaluate_expression(expr),
-                OperatorType::Unary(UnaryOperatorSubtype::Not)=> Value::Boolean(false) * self.evaluate_expression(expr),
-                _ => error("Unexpected operator")
-            }
-        }
-        else if let Expression::BinaryOperation(left, op, right) = node {
-
-            let left = self.evaluate_expression(left);
-            let right = self.evaluate_expression(right);
-    
-            // TODO: Is this needed now? I think the Value string ops covers it
-            if matches!(left, Value::String(_)) || matches!(right, Value::String(_)) {
-                if matches!(op, OperatorType::Additive(AdditiveOperatorSubtype::Add)) {
-                    let mut left_str = String::convert(left.to_string()).unwrap();
-                    let right = String::convert(right.to_string()).unwrap();
-                    left_str.push_str(&right);
-                    return Value::String(left_str);
+                Literal::String(s) => Value::String(s.clone()),
+            }),
+            Expression::MethodCall(method_call) => self.evaluate_method_call(method_call),
+            Expression::UnaryOperation(operator, expr) => {
+                let val = self.evaluate_expression(expr)?;
+                match operator {
+                    OperatorType::Unary(UnaryOperatorSubtype::Min) => Ok(Value::Float(-1.0) * val),
+                    OperatorType::Unary(UnaryOperatorSubtype::Not) => Ok(Value::Boolean(false) * val),
+                    _ => unreachable!(),
                 }
-            }
-            
-            return match op {
-                OperatorType::Exponential => left.power(right),
-                OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Mul) => left * right,
-                OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Div) => left / right,
-                OperatorType::Additive(AdditiveOperatorSubtype::Sub) => left - right,
-                OperatorType::Additive(AdditiveOperatorSubtype::Add) => left + right,
-                OperatorType::Comp(comp_type)  => {
-                    match comp_type {
-                        CompOperatorSubtype::Eq => left.eq_value(&right),
-                        CompOperatorSubtype::Neq => left.neq_value(&right),
-                        CompOperatorSubtype::Gt => left.gt_value(&right),
-                        CompOperatorSubtype::Lt => left.lt_value(&right),
-                        CompOperatorSubtype::Gte => left.gte_value(&right),
-                        CompOperatorSubtype::Lte => left.lte_value(&right),
+            },
+            Expression::BinaryOperation(left, op, right) => {
+                let left_val = self.evaluate_expression(left)?;
+                let right_val = self.evaluate_expression(right)?;
+
+                // String concatenation
+                if matches!(left_val, Value::String(_)) || matches!(right_val, Value::String(_)) {
+                    if matches!(op, OperatorType::Additive(AdditiveOperatorSubtype::Add)) {
+                        let mut left_str = String::convert(left_val.to_string())
+                            .ok_or_else(|| self.error_with_stack("Conversion failed for left operand"))?;
+                        let right_str = String::convert(right_val.to_string())
+                            .ok_or_else(|| self.error_with_stack("Conversion failed for right operand"))?;
+                        left_str.push_str(&right_str);
+                        return Ok(Value::String(left_str));
                     }
                 }
-                OperatorType::Unary(_) => error("Unary operatios unexpected")
-            };
-        }
-        else {
-            error(format!("Unrecognized node {:?}", node).as_str());
+
+                let res = match op {
+                    OperatorType::Exponential => left_val.power(right_val),
+                    OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Mul) => left_val * right_val,
+                    OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Div) => left_val / right_val,
+                    OperatorType::Additive(AdditiveOperatorSubtype::Sub) => left_val - right_val,
+                    OperatorType::Additive(AdditiveOperatorSubtype::Add) => left_val + right_val,
+                    OperatorType::Comp(comp_type) => match comp_type {
+                        CompOperatorSubtype::Eq => left_val.eq_value(&right_val),
+                        CompOperatorSubtype::Neq => left_val.neq_value(&right_val),
+                        CompOperatorSubtype::Gt => left_val.gt_value(&right_val),
+                        CompOperatorSubtype::Lt => left_val.lt_value(&right_val),
+                        CompOperatorSubtype::Gte => left_val.gte_value(&right_val),
+                        CompOperatorSubtype::Lte => left_val.lte_value(&right_val),
+                    },
+                    OperatorType::Unary(_) => {
+                        return Err(self.error_with_stack("Unary operation unexpected"));
+                    }
+                };
+                Ok(res)
+            },
+            _ => Err(self.error_with_stack(&format!("Unrecognized node {:?}", node))),
         }
     }
 
+    fn error_with_stack(&mut self, msg: &str) -> RuntimeError {
+        self.execution_context.attach_stack(
+            RuntimeError::new(msg)
+        )
+    }
 }

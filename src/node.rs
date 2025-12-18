@@ -26,6 +26,7 @@ pub struct MethodCall
 {
     pub identifier: Identifier,
     pub arguments: Vec<Box<Expression>>,
+    pub location: usize
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -54,10 +55,11 @@ pub enum Expression {
     IfConditional(Box<Expression>, Block, Option<Block>)
 }
 
-pub fn build_method_call_node(method_name: String, args: Vec<Box<Expression>>) -> Box<Expression> {
+pub fn build_method_call_node(method_name: String, args: Vec<Box<Expression>>, location: usize) -> Box<Expression> {
     return Box::new(Expression::MethodCall(MethodCall {
         identifier: Identifier { name: method_name },
-        arguments: args
+        arguments: args,
+        location
     }));
 }
 

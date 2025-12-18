@@ -16,36 +16,44 @@ fn main() {
 
     if cfg!(debug_assertions) {
         program_file = Some(&file);
-    }
-    else {
-        if program_file.is_none() {
-            error("Program file is mandatory.");
-        }
+    } else if program_file.is_none() {
+        eprintln!("Program file is mandatory.");
+        std::process::exit(1);
     }
 
     let file_name = program_file.unwrap();
-    let program = fs::read_to_string(file_name)
-        .expect("Invalid program name.");
-    let program = String::from(program);
+    let program = match fs::read_to_string(file_name) {
+        Ok(content) => content,
+        Err(_) => {
+            eprintln!("Invalid program file: {}", file_name);
+            std::process::exit(1);
+        }
+    };
 
-    // Lexical analysys
+    // Lexical analysis
     let mut token_parser = lexer::TokenParser::new(program);
-    let tokens = token_parser.parse();
+    let tokens = match token_parser.parse() {
+        Ok(t) => t,
+        Err(err) => {
+            eprintln!("Lexer error: {}", err);
+            std::process::exit(1);
+        }
+    };
 
-    // TODO: Handle this better later
-    let tokens = tokens.unwrap_or_else(|err| {
-        panic!("{}", err);
-    });
-
-    // Syntactical analysis and AST build
+    // Parsing
     let mut parser = parser::Parser::new(tokens);
-    let ast = parser.parse();
+    let ast = match parser.parse() {
+        Ok(ast) => ast,
+        Err(err) => {
+            eprintln!("Parser error: {}", err);
+            std::process::exit(1);
+        }
+    };
 
-    let ast = ast.unwrap_or_else(|err| {
-        panic!("{}", err);
-    });
-
-    // Interpreting the produced AST
+    // Interpreting
     let mut interpreter = Interpreter::new();
-    interpreter.evaluate(Some(&ast));
+    if let Err(err) = interpreter.evaluate(Some(&ast)) {
+        eprintln!("\nProgram exited \n {}", err);
+        std::process::exit(1);
+    }
 }
