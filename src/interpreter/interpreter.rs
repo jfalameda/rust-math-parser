@@ -1,6 +1,3 @@
-use std::iter::Zip;
-use std::ops::Deref;
-
 use crate::error::error;
 use crate::interpreter::scope::{ScopeArena, ScopeId};
 use crate::lexer::{AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype};
@@ -9,13 +6,31 @@ use crate::node::{Block, Expression, FunctionDeclaration, Identifier, Literal, M
 use super::methods::get_method;
 use super::value::{Value, Convert};
 
+pub struct ExecutionContext {
+    in_function: bool,
+    returned_value: Option<Value>,
+}
+
+impl ExecutionContext {
+    pub fn enter_function(&mut self) {
+        self.in_function = true;
+    }
+
+    pub fn exit_with_return(&mut self) -> Option<Value> {
+        let return_value = self.returned_value.clone();
+        self.returned_value = None;
+        self.in_function = false;
+
+        return_value
+    }
+}
+
 pub struct Interpreter {
     scope_arena: ScopeArena,
     current_scope: ScopeId,
 
     // TODO: Quick solution. Refactor later.
-    in_function: bool,
-    returned_value: Option<Value>,
+    execution_context: ExecutionContext
 }
 
 
@@ -23,14 +38,16 @@ impl Interpreter {
     pub fn new() -> Self {
         let mut scope_arena = ScopeArena::new();
         let current_scope = scope_arena.new_scope(None);
-        let in_function: bool = false;
-        let returned_value = None;
+
+        let execution_context = ExecutionContext {
+            in_function: false,
+            returned_value: None
+        };
 
         Interpreter {
             scope_arena,
             current_scope,
-            in_function,
-            returned_value
+            execution_context
         }
     }
 
@@ -61,10 +78,10 @@ impl Interpreter {
     }
 
     fn evaluate_return(&mut self, expression: &Expression) {
-        if self.in_function {
+        if self.execution_context.in_function {
             if let Expression::Return(inner_expression) = expression {
                 // Evaluate the inner expression and store the result
-                self.returned_value = Some(self.evaluate_expression(inner_expression));
+                self.execution_context.returned_value = Some(self.evaluate_expression(inner_expression));
             } else {
                 error("Expected a return expression.");
             }
@@ -161,18 +178,17 @@ impl Interpreter {
                 self.scope_arena.define_variable(self.current_scope, param.name, value);
             }
 
-            self.in_function = true;
-            self.returned_value = None;
+            self.execution_context.enter_function();
 
             // Evaluate function body in the new scope
             self.evaluate_block(&function.block);
 
-            self.in_function = false;
-
 
             self.current_scope = parent_scope;
 
-            self.returned_value.clone().unwrap_or(Value::Integer(0))
+            self.execution_context
+                .exit_with_return()
+                .unwrap_or(Value::Integer(0))
         } else {
             let args = self.evaluate_arguments(&node.arguments.clone());
             get_method(method_name.clone(), args)
