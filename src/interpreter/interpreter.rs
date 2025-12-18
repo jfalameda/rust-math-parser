@@ -1,73 +1,20 @@
 use crate::error::error;
-use crate::interpreter::scope::{ScopeArena, ScopeId};
+use crate::interpreter::execution_context::ExecutionContext;
+use crate::interpreter::scope::{ScopeArena};
 use crate::lexer::{AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype};
 use crate::node::{Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program};
 
 use super::methods::get_method;
 use super::value::{Value, Convert};
 
-pub struct ExecutionContext {
-    in_function: bool,
-    returned_value: Option<Value>,
-    scope_arena: ScopeArena,
-    current_scope: ScopeId,
-}
-
-impl ExecutionContext {
-    pub fn enter_function(&mut self) {
-        self.in_function = true;
-    }
-
-    pub fn exit_function_with_return(&mut self) -> Option<Value> {
-        self.in_function = false;
-        self.returned_value.take()
-    }
-
-    pub fn enter_new_scope(&mut self) -> (usize, usize) {
-        let parent_scope = self.current_scope;
-        let child_scope = self.scope_arena.new_scope(Some(parent_scope));
-
-        // Enter new scope
-        self.current_scope = child_scope;
-
-        (parent_scope, child_scope)
-    }
-
-    pub fn define_variable_in_scope(&mut self, identifier: &str, value: Value) {
-        self.scope_arena
-            .define_variable(
-                self.current_scope,
-                identifier,
-                value
-            );
-    }
-
-    pub fn lookup_variable_in_scope(&mut self, identifier: &str) -> Option<&Value> {
-        self.scope_arena.lookup_variable(self.current_scope, identifier)
-    }
-
-    pub fn restore_scope(&mut self, scope: usize) {
-        self.current_scope = scope;
-    }
-}
-
 pub struct Interpreter {
     // TODO: Quick solution. Refactor later.
     execution_context: ExecutionContext
 }
 
-
 impl Interpreter {
     pub fn new() -> Self {
-        let mut scope_arena = ScopeArena::new();
-        let current_scope = scope_arena.new_scope(None);
-
-        let execution_context = ExecutionContext {
-            in_function: false,
-            returned_value: None,
-            current_scope,
-            scope_arena
-        };
+        let execution_context = ExecutionContext::new();
 
         Interpreter {
             execution_context
@@ -101,10 +48,11 @@ impl Interpreter {
     }
 
     fn evaluate_return(&mut self, expression: &Expression) {
-        if self.execution_context.in_function {
+        if self.execution_context.is_in_function() {
             if let Expression::Return(inner_expression) = expression {
                 // Evaluate the inner expression and store the result
-                self.execution_context.returned_value = Some(self.evaluate_expression(inner_expression));
+                let value = self.evaluate_expression(inner_expression);
+                self.execution_context.set_return_value(value);
             } else {
                 error("Expected a return expression.");
             }
@@ -160,10 +108,9 @@ impl Interpreter {
     }
 
     fn evaluate_function_definition(&mut self, node: &FunctionDeclaration) {
-        self.execution_context.scope_arena
-            .define_function(
-                self.execution_context.current_scope,
-                node.identifier.name.clone(),
+        self.execution_context
+            .define_function_in_scope(
+                &node.identifier.name,
                 node.clone()
             );
     }
@@ -172,11 +119,10 @@ impl Interpreter {
         let method_name = &node.identifier.name;
 
         let (function_opt, arg_exprs) = {
-            let func = self.execution_context.scope_arena
-                .lookup_function(
-                    self.execution_context.current_scope,
+            let func = self.execution_context
+                .lookup_function_in_scope(
                     method_name
-                ).cloned();
+                );
 
             let args = node.arguments.clone();
             (func, args)
