@@ -131,14 +131,10 @@ impl Interpreter {
             }
 
             self.execution_context.push_frame(method_name.clone(),Some(node.location));
-
             self.execution_context.enter_function();
 
             // Execute function block
             self.evaluate_block(&function.block)?;
-
-            // Restore previous scope
-            self.execution_context.restore_scope(parent_scope);
 
             // Get return value
             let return_value = self
@@ -146,7 +142,9 @@ impl Interpreter {
                 .exit_function_with_return()
                 .unwrap_or(Value::Integer(0));
 
+            // Restore previous scope
             self.execution_context.pop_frame();
+            self.execution_context.restore_scope(parent_scope);
 
             Ok(return_value)
         } else {
