@@ -133,7 +133,7 @@ impl Interpreter {
             let evaluated_args = self.evaluate_arguments(&arg_exprs);
 
             // Validate arity
-            // TODO: Create separate function
+            // TODO: Create separate function and proper error handling
             if param_names.len() != evaluated_args.len() {
                 error(&format!(
                     "Function '{}' expected {} arguments, got {}",
@@ -143,8 +143,9 @@ impl Interpreter {
                 ));
             }
 
-            // Create a new scope for the function call
-            // TODO: Consider wrapper to create scopes
+            // Create a new scope for the function call that will contain references
+            // to the function arguments.
+            // FunctionScope { variables: ...[param_names]; BlockScope { Code statemets }}
             let (parent_scope, _) = self.execution_context.enter_new_scope();
 
             // Inject arguments as local variables
