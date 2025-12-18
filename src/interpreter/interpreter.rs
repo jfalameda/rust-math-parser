@@ -1,6 +1,5 @@
 use crate::error::error;
 use crate::interpreter::execution_context::ExecutionContext;
-use crate::interpreter::scope::{ScopeArena};
 use crate::lexer::{AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype};
 use crate::node::{Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program};
 
@@ -8,7 +7,6 @@ use super::methods::get_method;
 use super::value::{Value, Convert};
 
 pub struct Interpreter {
-    // TODO: Quick solution. Refactor later.
     execution_context: ExecutionContext
 }
 
