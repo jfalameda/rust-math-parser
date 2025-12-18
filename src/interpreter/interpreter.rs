@@ -9,6 +9,8 @@ use super::value::{Value, Convert};
 pub struct ExecutionContext {
     in_function: bool,
     returned_value: Option<Value>,
+    scope_arena: ScopeArena,
+    current_scope: ScopeId,
 }
 
 impl ExecutionContext {
@@ -16,19 +18,40 @@ impl ExecutionContext {
         self.in_function = true;
     }
 
-    pub fn exit_with_return(&mut self) -> Option<Value> {
-        let return_value = self.returned_value.clone();
-        self.returned_value = None;
+    pub fn exit_function_with_return(&mut self) -> Option<Value> {
         self.in_function = false;
+        self.returned_value.take()
+    }
 
-        return_value
+    pub fn enter_new_scope(&mut self) -> (usize, usize) {
+        let parent_scope = self.current_scope;
+        let child_scope = self.scope_arena.new_scope(Some(parent_scope));
+
+        // Enter new scope
+        self.current_scope = child_scope;
+
+        (parent_scope, child_scope)
+    }
+
+    pub fn define_variable_in_scope(&mut self, identifier: &str, value: Value) {
+        self.scope_arena
+            .define_variable(
+                self.current_scope,
+                identifier,
+                value
+            );
+    }
+
+    pub fn lookup_variable_in_scope(&mut self, identifier: &str) -> Option<&Value> {
+        self.scope_arena.lookup_variable(self.current_scope, identifier)
+    }
+
+    pub fn restore_scope(&mut self, scope: usize) {
+        self.current_scope = scope;
     }
 }
 
 pub struct Interpreter {
-    scope_arena: ScopeArena,
-    current_scope: ScopeId,
-
     // TODO: Quick solution. Refactor later.
     execution_context: ExecutionContext
 }
@@ -41,12 +64,12 @@ impl Interpreter {
 
         let execution_context = ExecutionContext {
             in_function: false,
-            returned_value: None
+            returned_value: None,
+            current_scope,
+            scope_arena
         };
 
         Interpreter {
-            scope_arena,
-            current_scope,
             execution_context
         }
     }
@@ -91,19 +114,14 @@ impl Interpreter {
     }
 
     fn evaluate_block(&mut self, block: &Block) {
-        let parent_scope = self.current_scope;
-
-        let child_scope = self.scope_arena.new_scope(Some(parent_scope));
-
-        // Enter new scope
-        self.current_scope = child_scope;
+        let (parent_scope, _) = self.execution_context.enter_new_scope();
 
         for statement in block {
             self.evaluate(Some(statement));
         }
 
         // Exit scope
-        self.current_scope = parent_scope;
+        self.execution_context.restore_scope(parent_scope);
     }
 
     fn evaluate_statement(&mut self, expression: &Expression) {
@@ -134,18 +152,32 @@ impl Interpreter {
     fn evaluate_assignment(&mut self, identifier: &Identifier, expression: &Expression) {
 
         let value = self.evaluate_expression(expression);
-        self.scope_arena.define_variable(self.current_scope, identifier.name.to_string(), value);
+
+        self.execution_context.define_variable_in_scope(
+            &identifier.name,
+            value
+        );
     }
 
     fn evaluate_function_definition(&mut self, node: &FunctionDeclaration) {
-        self.scope_arena.define_function(self.current_scope, node.identifier.name.clone(), node.clone());
+        self.execution_context.scope_arena
+            .define_function(
+                self.execution_context.current_scope,
+                node.identifier.name.clone(),
+                node.clone()
+            );
     }
 
     fn evaluate_method_call(&mut self, node: &MethodCall) -> Value {
         let method_name = &node.identifier.name;
 
         let (function_opt, arg_exprs) = {
-            let func = self.scope_arena.lookup_function(self.current_scope, method_name).cloned();
+            let func = self.execution_context.scope_arena
+                .lookup_function(
+                    self.execution_context.current_scope,
+                    method_name
+                ).cloned();
+
             let args = node.arguments.clone();
             (func, args)
         };
@@ -169,25 +201,25 @@ impl Interpreter {
 
             // Create a new scope for the function call
             // TODO: Consider wrapper to create scopes
-            let parent_scope = self.current_scope;
-            let function_scope = self.scope_arena.new_scope(Some(parent_scope));
-            self.current_scope = function_scope;
+            let (parent_scope, _) = self.execution_context.enter_new_scope();
 
             // Inject arguments as local variables
             for (param, value) in param_names.into_iter().zip(evaluated_args.into_iter()) {
-                self.scope_arena.define_variable(self.current_scope, param.name, value);
+                self.execution_context
+                    .define_variable_in_scope(
+                        &param.name,
+                        value
+                    );
             }
 
             self.execution_context.enter_function();
 
-            // Evaluate function body in the new scope
             self.evaluate_block(&function.block);
 
-
-            self.current_scope = parent_scope;
+            self.execution_context.restore_scope(parent_scope);
 
             self.execution_context
-                .exit_with_return()
+                .exit_function_with_return()
                 .unwrap_or(Value::Integer(0))
         } else {
             let args = self.evaluate_arguments(&node.arguments.clone());
@@ -205,8 +237,8 @@ impl Interpreter {
 
     fn evaluate_expression(&mut self, node: &Expression) -> Value {
         if let Expression::Identifier(identifier) = node {
-            let identifier = identifier.name.to_string();
-            let result = self.scope_arena.lookup_variable(self.current_scope, &identifier);
+            let identifier = identifier.name.clone();
+            let result = self.execution_context.lookup_variable_in_scope(&identifier);
 
             // Do we need to clone? What is the cost of it
             // TODO: Improve code
