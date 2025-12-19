@@ -1,13 +1,13 @@
-use std::fmt::Display;
+use std::{rc::Rc};
 
-use crate::{error, lexer::{AdditiveOperatorSubtype, NumeralType, OperatorType, Token, TokenType, UnaryOperatorSubtype}};
+use crate::{lexer::{NumeralType, OperatorType, Token, TokenType, UnaryOperatorSubtype}};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
     Boolean(bool),
     Integer(i64),
     Float(f64),
-    String(String)
+    String(Rc<str>)
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -93,27 +93,48 @@ pub fn build_function_declaration_node(identifier: String, args: Vec<String>, bl
 }
 
 pub fn build_node(token: &Token, left: Option<Box<Expression>>, right: Option<Box<Expression>>) -> Box<Expression> {
-    let value = String::from(token.value.as_ref().unwrap());
-    return
-        match token.token_type {
-            TokenType::NumeralLiteral(numeral_type) => match(numeral_type) {
-                NumeralType::Integer => build_numerical_literal_node(Literal::Integer(value.parse::<i64>().unwrap())),
-                NumeralType::Float => build_numerical_literal_node(Literal::Float(value.parse::<f64>().unwrap()))
-            },
-            TokenType::StringLiteral => build_numerical_literal_node(Literal::String(value.parse::<String>().unwrap())),
-            TokenType::BooleanLiteral => build_numerical_literal_node(Literal::Boolean(value.parse::<bool>().unwrap())),
-            TokenType::Operator => {
-                if let Some(operator_type) = token.operator_type.clone() {
-                    build_binary_op_node(operator_type, left.unwrap(), right.unwrap())
-                } else {
-                    panic!("Unexpected operator type.")
+    // Safely get token value
+    let value = token
+        .value
+        .as_ref()
+        .expect("Token value missing")
+        .to_string();
+
+    match token.token_type {
+        TokenType::NumeralLiteral(numeral_type) => {
+            match numeral_type {
+                NumeralType::Integer => {
+                    let n = value.parse::<i64>().unwrap_or_default();
+                    build_numerical_literal_node(Literal::Integer(n))
                 }
-            },
-            TokenType::Assignment => build_assignment_node(value, left.unwrap()),
-            TokenType::Symbol => Box::new(Expression::Identifier(Identifier { name: value })),
-            _ => panic!("Unexpected token type to process when building node.")
-        };
+                NumeralType::Float => {
+                    let f = value.parse::<f64>().unwrap_or_default();
+                    build_numerical_literal_node(Literal::Float(f))
+                }
+            }
+        }
+        TokenType::StringLiteral => {
+            build_numerical_literal_node(Literal::String(Rc::from(value)))
+        }
+        TokenType::BooleanLiteral => {
+            let b = value.parse::<bool>().unwrap_or_default();
+            build_numerical_literal_node(Literal::Boolean(b))
+        }
+        TokenType::Operator => {
+            let operator_type = token
+                .operator_type
+                .clone()
+                .expect("Unexpected operator type.");
+            build_binary_op_node(operator_type, left.expect("Left operand missing"), right.expect("Right operand missing"))
+        }
+        TokenType::Assignment => {
+            build_assignment_node(value, left.expect("Left operand missing"))
+        }
+        TokenType::Symbol => Box::new(Expression::Identifier(Identifier { name: value })),
+        _ => panic!("Unexpected token type to process when building node."),
+    }
 }
+
 
 pub fn build_unary_node(operation_type: UnaryOperatorSubtype, node: Box<Expression>) -> Box<Expression> {
     return Box::new(Expression::UnaryOperation(OperatorType::Unary(operation_type), node));

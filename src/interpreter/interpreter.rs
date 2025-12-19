@@ -5,7 +5,7 @@ use crate::interpreter::{
 use crate::lexer::{AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype};
 use crate::node::{Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program};
 use super::methods::get_method;
-use super::value::{Value, Convert};
+use super::value::{Value};
 
 pub struct Interpreter {
     execution_context: ExecutionContext,
@@ -168,6 +168,9 @@ impl Interpreter {
             Expression::Identifier(identifier) => {
                 let identifier = identifier.name.clone();
                 let result = self.execution_context.lookup_variable_in_scope(&identifier);
+
+                // Cloning variable. Considering a way to pass the reference so that cloning is
+                // not necessary. Variables should not be cloned.
                 result
                     .cloned()
                     .ok_or_else(|| self.error_with_stack(&format!("Undefined variable {}", identifier)))
@@ -176,7 +179,7 @@ impl Interpreter {
                 Literal::Boolean(b) => Value::Boolean(*b),
                 Literal::Integer(i) => Value::Integer(*i),
                 Literal::Float(f) => Value::Float(*f),
-                Literal::String(s) => Value::String(s.clone()),
+                Literal::String(s) => Value::String(s.clone()), // Cheap Rc clone
             }),
             Expression::MethodCall(method_call) => self.evaluate_method_call(method_call),
             Expression::UnaryOperation(operator, expr) => {
@@ -194,12 +197,11 @@ impl Interpreter {
                 // String concatenation
                 if matches!(left_val, Value::String(_)) || matches!(right_val, Value::String(_)) {
                     if matches!(op, OperatorType::Additive(AdditiveOperatorSubtype::Add)) {
-                        let mut left_str = String::convert(left_val.to_string())
-                            .ok_or_else(|| self.error_with_stack("Conversion failed for left operand"))?;
-                        let right_str = String::convert(right_val.to_string())
-                            .ok_or_else(|| self.error_with_stack("Conversion failed for right operand"))?;
-                        left_str.push_str(&right_str);
-                        return Ok(Value::String(left_str));
+                        // Convert left_val to String
+                        let left_str = left_val.to_string();
+
+                        // Return as Value::String(Rc<str>)
+                        return Ok(left_str + right_val);
                     }
                 }
 

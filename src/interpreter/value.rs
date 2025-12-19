@@ -1,4 +1,4 @@
-use std::ops;
+use std::{ops, rc::Rc};
 
 use crate::error;
 
@@ -9,7 +9,7 @@ use crate::error;
 pub enum Value {
     Integer(i64),
     Float(f64),
-    String(String),
+    String(Rc<str>),
     Boolean(bool),
     Empty,
 }
@@ -18,11 +18,11 @@ impl Value {
     /// Convert to a string `Value::String(...)` (keeps same semantics you had).
     pub fn to_string(&self) -> Value {
         match self {
-            Value::Integer(i) => Value::String(i.to_string()),
-            Value::Float(f) => Value::String(f.to_string()),
-            Value::String(s) => Value::String(s.to_string()),
-            Value::Empty => Value::String("".to_string()),
-            Value::Boolean(b) => Value::String(b.to_string()),
+            Value::Integer(i) => Value::String(Rc::from(i.to_string())),
+            Value::Float(f)   => Value::String(Rc::from(f.to_string())),
+            Value::Boolean(b)=> Value::String(Rc::from(b.to_string())),
+            Value::Empty     => Value::String(Rc::from("")),
+            Value::String(s) => Value::String(s.clone()), // cheap Rc clone
         }
     }
 
@@ -191,10 +191,10 @@ impl Value {
     ///
     /// Returns `Value::Integer(i64)` if both operands were integers and operation result fits in i64,
     /// otherwise `Value::Float`.
-    fn numeric_binop<F_int, F_float>(left: Value, right: Value, int_op: F_int, float_op: F_float) -> Value
+    fn numeric_binop<FInt, FFloat>(left: Value, right: Value, int_op: FInt, float_op: FFloat) -> Value
     where
-        F_int: Fn(i64, i64) -> Option<i64>,
-        F_float: Fn(f64, f64) -> f64,
+        FInt: Fn(i64, i64) -> Option<i64>,
+        FFloat: Fn(f64, f64) -> f64,
     {
         let lnum = left.to_number();
         let rnum = right.to_number();
@@ -238,33 +238,31 @@ impl ops::Add<Value> for Value {
     type Output = Value;
 
     fn add(self, right: Value) -> Value {
-        // If either side is a String (or converts to string?) the operation should be concatenation.
-        // We follow the rule: if either VARIANT is String, do textual concatenation using `to_string()`.
+        // If either side is a String, perform textual concatenation
         if matches!(self, Value::String(_)) || matches!(right, Value::String(_)) {
-            let s_left = match self {
-                Value::String(_) => self.to_string(), // returns Value::String(...)
+            // Borrow `self` and `right` for matching to avoid moving
+            let s_left = match &self {
+                Value::String(_) => self.to_string(), // consumes self here is okay because to_string() returns Value
                 other => other.to_string(),
             };
-            let s_right = match right {
-                Value::String(_) => right.to_string(),
+            let s_right = match &right {
+                Value::String(_) => right.to_string(), // consumes right here is okay
                 other => other.to_string(),
             };
 
             // both to_string() returned Value::String
             if let (Value::String(ls), Value::String(rs)) = (s_left, s_right) {
-                return Value::String(format!("{}{}", ls, rs));
-            } else {
-                // defensive fallback; shouldn't happen
-                return error("String concatenation failed.");
+                let mut buf = String::with_capacity(ls.len() + rs.len());
+                buf.push_str(&ls);
+                buf.push_str(&rs);
+                return Value::String(Rc::from(buf));
             }
         }
 
-        // Numeric addition, preserve integer result when both are integers and no overflow
+        // Numeric addition
         Value::numeric_binop(self, right,
-            // integer op -> attempt checked_add and return Some if success else None
-            |a, b| a.checked_add(b),
-            // float op
-            |a, b| a + b
+            |a, b| a.checked_add(b), // integer op
+            |a, b| a + b             // float op
         )
     }
 }
@@ -328,6 +326,6 @@ macro_rules! impl_convert {
 }
 
 impl_convert!(f64, Float);
-impl_convert!(String, String);
+impl_convert!(Rc<str>, String);
 impl_convert!(i64, Integer);
 impl_convert!(bool, Boolean);
