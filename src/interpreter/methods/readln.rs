@@ -1,8 +1,8 @@
 use std::{io::{self, BufRead, Write, stdout}, rc::Rc};
 
-use crate::{interpreter::value::{Value}, register_method};
+use crate::{interpreter::{runtime_errors::RuntimeError, value::Value}, register_method};
 
-pub fn fn_readln(args: Vec<Value>) -> Value {
+pub fn fn_readln(args: Vec<Value>) -> Result<Value, RuntimeError> {
     // Print all arguments without converting to String::convert
     for arg in args.iter() {
         let val_str = arg.to_string(); // returns Value::String(Rc<str>)
@@ -30,7 +30,7 @@ pub fn fn_readln(args: Vec<Value>) -> Value {
     }
 
     // Return as Value::String(Rc<str>)
-    Value::String(Rc::from(line))
+    Ok(Value::String(Rc::from(line)))
 }
 
 register_method!("readln", fn_readln);

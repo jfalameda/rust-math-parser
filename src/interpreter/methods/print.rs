@@ -1,6 +1,6 @@
-use crate::{interpreter::value::{Value}, register_method};
+use crate::{interpreter::{runtime_errors::RuntimeError, value::Value}, register_method};
 
-pub fn fn_print(args: Vec<Value>) -> Value {
+pub fn fn_print(args: Vec<Value>) -> Result<Value, RuntimeError> {
     for arg in args.iter() {
         // Keep Value alive
         let val_str = arg.to_string(); // Value::String(Rc<str>)
@@ -12,7 +12,7 @@ pub fn fn_print(args: Vec<Value>) -> Value {
         }
     }
 
-    Value::Empty
+    Ok(Value::Empty)
 }
 
 register_method!("print", fn_print);

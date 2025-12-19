@@ -1,6 +1,6 @@
 use std::{ops, rc::Rc};
 
-use crate::error;
+use crate::error::error;
 
 
 // Integer values and float should be distinguished, also boolean properly

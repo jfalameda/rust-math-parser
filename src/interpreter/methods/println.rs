@@ -1,6 +1,6 @@
-use crate::{interpreter::value::{Convert, Value}, register_method};
+use crate::{interpreter::{runtime_errors::RuntimeError, value::Value}, register_method};
 
-pub fn fn_println(args: Vec<Value>) -> Value {
+pub fn fn_println(args: Vec<Value>) -> Result<Value, RuntimeError> {
     for arg in args.iter() {
         // Force the Value into a Value::String
         let val_str = arg.to_string(); // returns Value::String(Rc<str>)
@@ -13,6 +13,6 @@ pub fn fn_println(args: Vec<Value>) -> Value {
     }
     println!();
 
-    Value::Empty
+    Ok(Value::Empty)
 }
 register_method!("println", fn_println);

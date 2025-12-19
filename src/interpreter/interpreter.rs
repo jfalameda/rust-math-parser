@@ -150,7 +150,8 @@ impl Interpreter {
         } else {
             // If function not found in scope, attempt to call built-in method
             let args = self.evaluate_arguments(&node.arguments.clone())?;
-            Ok(get_method(method_name.clone(), args))
+            let result = get_method(method_name.clone(), args);
+            result.map_err(|err| self.execution_context.attach_stack(err))
         }
     }
 
@@ -186,7 +187,10 @@ impl Interpreter {
                 let val = self.evaluate_expression(expr)?;
                 match operator {
                     OperatorType::Unary(UnaryOperatorSubtype::Min) => Ok(Value::Float(-1.0) * val),
-                    OperatorType::Unary(UnaryOperatorSubtype::Not) => Ok(Value::Boolean(false) * val),
+                    OperatorType::Unary(UnaryOperatorSubtype::Not) => {
+                        let bool_value = val.to_bool();
+                        Ok(Value::Boolean(!bool_value))
+                    }
                     _ => unreachable!(),
                 }
             },

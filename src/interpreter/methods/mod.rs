@@ -4,11 +4,9 @@ mod readln;
 mod string;
 mod math;
 
-use crate::error;
+use super::{runtime_errors::RuntimeError, value::Value};
 
-use super::value::Value;
-
-pub type NativeFn = fn(Vec<Value>) -> Value;
+pub type NativeFn = fn(Vec<Value>) -> Result<Value, RuntimeError>;
 
 pub struct Method {
     pub name: &'static str,
@@ -17,14 +15,14 @@ pub struct Method {
 
 inventory::collect!(Method);
 
-pub fn get_method(name: String, args: Vec<Value>) -> Value {
+pub fn get_method(name: String, args: Vec<Value>) -> Result<Value, RuntimeError> {
     for method in inventory::iter::<Method> {
         if method.name == name {
             return (method.func)(args);
         }
     }
 
-    error(format!("Method not found: {}", name).as_str())
+    Err(RuntimeError::new(format!("Method not found: {}", name)))
 }
 
 #[macro_export]

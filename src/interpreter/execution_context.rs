@@ -1,8 +1,8 @@
-use crate::{interpreter::{call_stack::{CallStack, StackFrame}, runtime_errors::{RuntimeError, StackAttachable}, scope::{ScopeArena, ScopeId}, value::Value}, node::FunctionDeclaration};
+use crate::{interpreter::{call_stack::{CallStack, StackFrame}, runtime_errors::RuntimeError, scope::{ScopeArena, ScopeId}, value::Value}, node::FunctionDeclaration};
 
 pub struct ExecutionContext {
-    in_function: bool,
-    returned_value: Option<Value>,
+    function_depth: usize,
+    return_values: Vec<Option<Value>>,
     scope_arena: ScopeArena,
     current_scope: ScopeId,
     call_stack: CallStack,
@@ -14,8 +14,8 @@ impl ExecutionContext {
         let current_scope = scope_arena.new_scope(None);
 
         ExecutionContext {
-            in_function: false,
-            returned_value: None,
+            function_depth: 0,
+            return_values: Vec::new(),
             scope_arena,
             current_scope,
             call_stack: CallStack::new(),
@@ -23,13 +23,18 @@ impl ExecutionContext {
     }
 
     pub fn enter_function(&mut self) {
-        self.in_function = true;
+        self.function_depth += 1;
+        self.return_values.push(None);
+    }
+    
+    pub fn exit_function_with_return(&mut self) -> Option<Value> {
+        if self.function_depth == 0 {
+            return None;
+        }
+        self.function_depth -= 1;
+        self.return_values.pop().unwrap_or(None)
     }
 
-    pub fn exit_function_with_return(&mut self) -> Option<Value> {
-        self.in_function = false;
-        self.returned_value.take()
-    }
 
     pub fn enter_new_scope(&mut self) -> (usize, usize) {
         let parent_scope = self.current_scope;
@@ -61,12 +66,17 @@ impl ExecutionContext {
     }
 
     pub fn is_in_function(&self) -> bool {
-        self.in_function
+        self.function_depth > 0
+    }
+    
+    pub fn set_return_value(&mut self, value: Value) {
+        if let Some(slot) = self.return_values.last_mut() {
+            *slot = Some(value);
+        } else {
+            panic!("set_return_value called outside of a function");
+        }
     }
 
-    pub fn set_return_value(&mut self, value: Value) {
-        self.returned_value = Some(value);
-    }
 
     // Call stack helpers
     pub fn push_frame(&mut self, name: String, location: Option<usize>) {

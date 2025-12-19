@@ -1,13 +1,9 @@
-mod lexer;
-mod parser;
-mod node;
-mod interpreter;
-mod error;
-mod lexer_errors;
-mod parser_errors;
 use std::{env, fs};
-use crate::interpreter::interpreter::Interpreter;
-use error::error;
+use parser::{
+    interpreter::interpreter::Interpreter,
+    lexer,
+    parser as ast_parser,
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -41,7 +37,7 @@ fn main() {
     };
 
     // Parsing
-    let mut parser = parser::Parser::new(tokens);
+    let mut parser = ast_parser::Parser::new(tokens);
     let ast = match parser.parse() {
         Ok(ast) => ast,
         Err(err) => {
