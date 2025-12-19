@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use crate::{interpreter::value::Value, node::FunctionDeclaration};
 
-
 pub type ScopeId = usize;
 
 #[derive(Debug)]
 pub struct Scope {
     parent: Option<ScopeId>,
     variables: HashMap<String, Value>,
-    functions: HashMap<String, FunctionDeclaration>
+    functions: HashMap<String, FunctionDeclaration>,
 }
 
 #[derive(Debug)]
@@ -26,29 +25,22 @@ impl ScopeArena {
         let scope = Scope {
             parent,
             variables: HashMap::new(),
-            functions: HashMap::new()
+            functions: HashMap::new(),
         };
 
         self.scopes.push(scope);
         self.scopes.len() - 1
     }
 
-    pub fn define_variable(
-        &mut self,
-        scope_id: ScopeId,
-        name: impl Into<String>,
-        value: Value
-    ) {
-        self.scopes[scope_id]
-            .variables
-            .insert(name.into(), value);
+    pub fn define_variable(&mut self, scope_id: ScopeId, name: impl Into<String>, value: Value) {
+        self.scopes[scope_id].variables.insert(name.into(), value);
     }
 
     pub fn define_function(
         &mut self,
         scope_id: ScopeId,
         name: impl Into<String>,
-        function: FunctionDeclaration
+        function: FunctionDeclaration,
     ) {
         self.scopes[scope_id]
             .functions
@@ -65,10 +57,14 @@ impl ScopeArena {
                 None => break,
             }
         }
-    None
+        None
     }
 
-    pub fn lookup_function(&self, mut scope_id: ScopeId, name: &str) -> Option<&FunctionDeclaration> {
+    pub fn lookup_function(
+        &self,
+        mut scope_id: ScopeId,
+        name: &str,
+    ) -> Option<&FunctionDeclaration> {
         while let Some(scope) = self.scopes.get(scope_id) {
             if let Some(function) = scope.functions.get(name) {
                 return Some(function);
@@ -78,6 +74,12 @@ impl ScopeArena {
                 None => break,
             }
         }
-    None
+        None
+    }
+}
+
+impl Default for ScopeArena {
+    fn default() -> Self {
+        Self::new()
     }
 }

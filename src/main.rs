@@ -1,9 +1,5 @@
+use parser::{interpreter::Interpreter, lexer, parser as ast_parser};
 use std::{env, fs};
-use parser::{
-    interpreter::interpreter::Interpreter,
-    lexer,
-    parser as ast_parser,
-};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -48,7 +44,7 @@ fn main() {
 
     // Interpreting
     let mut interpreter = Interpreter::new();
-    if let Err(err) = interpreter.evaluate(Some(&ast)) {
+    if let Err(err) = interpreter.evaluate(Some(ast.as_ref())) {
         eprintln!("\nProgram exited \n {}", err);
         std::process::exit(1);
     }

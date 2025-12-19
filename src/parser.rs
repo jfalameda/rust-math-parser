@@ -1,6 +1,10 @@
-use crate::lexer::{self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype};
+use crate::lexer::{
+    self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype,
+};
 use crate::node::{
-    Block, Expression, build_assignment_node, build_conditional_node, build_function_declaration_node, build_method_call_node, build_node, build_program_node, build_return_node, build_statement_node, build_unary_node
+    build_assignment_node, build_conditional_node, build_function_declaration_node,
+    build_method_call_node, build_node, build_program_node, build_return_node,
+    build_statement_node, build_unary_node, Block, Expression,
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -47,10 +51,7 @@ impl Parser {
     }
 
     fn digest(&mut self, expected: TokenType) -> Result<Token, ParserError> {
-        let token = self
-            .peek(None)
-            .ok_or_else(error_eof)?
-            .clone();
+        let token = self.peek(None).ok_or_else(error_eof)?.clone();
 
         if token.token_type != expected {
             return Err(error_unexpected_token(&token, &expected));
@@ -64,13 +65,13 @@ impl Parser {
         Ok(build_program_node(self.parse_block()?))
     }
 
-    fn consume_statement_terminator(&mut self, stmt: &Box<Expression>) -> Result<(), ParserError> {
-        match stmt.as_ref() {
-            Expression::IfConditional(_, _, _) | Expression::FunctionDeclaration(_)=> Ok(()),
+    fn consume_statement_terminator(&mut self, stmt: &Expression) -> Result<(), ParserError> {
+        match stmt {
+            Expression::IfConditional(_, _, _) | Expression::FunctionDeclaration(_) => Ok(()),
             _ => {
                 self.digest(TokenType::EndOfstatement)?;
                 Ok(())
-            },
+            }
         }
     }
 
@@ -82,17 +83,17 @@ impl Parser {
         self.digest(TokenType::ParenthesisL)?;
 
         let mut args = vec![];
-        
+
         while let Some(token) = self.peek(None) {
             if token.token_type == TokenType::ParenthesisR {
                 break;
             }
-            
+
             // Function arguments
             args.push(
                 self.digest(TokenType::Symbol)?
                     .value
-                    .ok_or_else(error_unexpected_empty_value)?
+                    .ok_or_else(error_unexpected_empty_value)?,
             );
 
             // If next is not ')', expect a comma
@@ -112,7 +113,6 @@ impl Parser {
         let identifier = identifier.value.ok_or_else(error_unexpected_empty_value)?;
 
         Ok(build_function_declaration_node(identifier, args, block))
-        
     }
 
     fn parse_block_with_delimiters(&mut self) -> Result<Block, ParserError> {
@@ -136,7 +136,7 @@ impl Parser {
             }
 
             let stmt = self.parse_statement()?;
-            self.consume_statement_terminator(&stmt)?;
+            self.consume_statement_terminator(stmt.as_ref())?;
 
             body.push(build_statement_node(stmt));
         }
@@ -152,11 +152,11 @@ impl Parser {
             | TokenType::BooleanLiteral
             | TokenType::Operator
             | TokenType::Symbol
-            | TokenType::StringLiteral     => Ok(self.parse_expression(0)?),
-            TokenType::Declaration         => Ok(self.parse_declaration()?),
+            | TokenType::StringLiteral => Ok(self.parse_expression(0)?),
+            TokenType::Declaration => Ok(self.parse_declaration()?),
             TokenType::FunctionDeclaration => Ok(self.parse_function_declaration()?),
-            TokenType::ConditionalIf       => Ok(self.parse_conditional()?),
-            TokenType::Return              => Ok(self.parse_return()?),
+            TokenType::ConditionalIf => Ok(self.parse_conditional()?),
+            TokenType::Return => Ok(self.parse_return()?),
             _ => Err(error_unrecognized_token(token)),
         }?;
 
@@ -167,7 +167,10 @@ impl Parser {
         let symbol = self.digest(TokenType::Symbol)?;
         self.digest(TokenType::Assignment)?;
         let expr = self.parse_expression(0)?;
-        Ok(build_assignment_node(symbol.value.ok_or_else(error_eof)?, expr))
+        Ok(build_assignment_node(
+            symbol.value.ok_or_else(error_eof)?,
+            expr,
+        ))
     }
 
     fn parse_return(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -180,7 +183,7 @@ impl Parser {
         self.digest(TokenType::ParenthesisL)?;
         let expr = self.parse_expression(0)?;
         self.digest(TokenType::ParenthesisR)?;
-        
+
         let if_block = self.parse_statement_or_block()?;
 
         let else_block = if self.peek_type_is(TokenType::ConditionalElse) {
@@ -193,34 +196,33 @@ impl Parser {
         Ok(build_conditional_node(expr, if_block, else_block))
     }
 
-    fn parse_statement_or_block(&mut self)  -> Result<Block, ParserError> {
+    fn parse_statement_or_block(&mut self) -> Result<Block, ParserError> {
         // If can be followed either by a block or by a simple statement
         if self.peek_type_is(TokenType::BlockStart) {
             let if_block = self.parse_block_with_delimiters()?;
-            
+
             Ok(if_block)
-        }
-        else {
+        } else {
             let stmt = self.parse_statement()?;
-            self.consume_statement_terminator(&stmt)?;
-            Ok(vec![stmt])
+            self.consume_statement_terminator(stmt.as_ref())?;
+            Ok(vec![build_statement_node(stmt)])
         }
     }
-
 
     fn parse_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError> {
         let token = self.peek(None).ok_or_else(error_eof)?;
         let next = self.peek(Some(self.pos + 1));
 
-        let expr = if token.token_type == TokenType::Symbol
-            && matches!(next.map(|t| t.token_type.clone()), Some(TokenType::ParenthesisL))
+        if token.token_type == TokenType::Symbol
+            && matches!(
+                next.map(|t| t.token_type.clone()),
+                Some(TokenType::ParenthesisL)
+            )
         {
             self.parse_method_call()
         } else {
             self.parse_binary_expression(precedence)
-        };
-
-        return expr;
+        }
     }
 
     fn parse_method_call(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -229,10 +231,14 @@ impl Parser {
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
-        Ok(build_method_call_node(method_name.value.ok_or_else(error_eof)?, args, method_name.line))
+        Ok(build_method_call_node(
+            method_name.value.ok_or_else(error_eof)?,
+            args,
+            method_name.line,
+        ))
     }
 
-    fn parse_method_args(&mut self) -> Result<Vec<Box<Expression>>, ParserError> {
+    fn parse_method_args(&mut self) -> Result<Vec<Expression>, ParserError> {
         let mut args = vec![];
 
         while let Some(token) = self.peek(None) {
@@ -240,7 +246,7 @@ impl Parser {
                 break;
             }
 
-            args.push(self.parse_expression(0)?);
+            args.push(*self.parse_expression(0)?);
 
             // If next is not ')', expect a comma
             if let Some(next) = self.peek(None) {
@@ -272,7 +278,11 @@ impl Parser {
 
             self.digest(TokenType::Operator)?;
 
-            let next_precedence = if is_right { op_precedence } else { op_precedence + 1 };
+            let next_precedence = if is_right {
+                op_precedence
+            } else {
+                op_precedence + 1
+            };
 
             let right = self.parse_expression(next_precedence)?;
             left = build_node(&op_token, Some(left), Some(right));
@@ -291,13 +301,13 @@ impl Parser {
                         self.digest(TokenType::Operator)?; // consume '-'
                         let literal = self.parse_term()?;
                         Ok(build_unary_node(UnaryOperatorSubtype::Min, literal))
-                    },
+                    }
                     Some(OperatorType::Unary(UnaryOperatorSubtype::Not)) => {
                         self.digest(TokenType::Operator)?;
                         let literal = self.parse_term()?;
                         Ok(build_unary_node(UnaryOperatorSubtype::Not, literal))
                     }
-                    Some(_) | None => Err(error_unrecognized_token(&token))
+                    Some(_) | None => Err(error_unrecognized_token(&token)),
                 }
             }
 

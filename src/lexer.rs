@@ -1,5 +1,7 @@
 use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
+use std::fmt;
+
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub enum NumeralType {
     Integer,
@@ -28,9 +30,9 @@ pub enum TokenType {
     Eof,
 }
 
-impl ToString for TokenType {
-    fn to_string(&self) -> String {
-        match self {
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let text = match self {
             TokenType::Operator => "Operator",
             TokenType::NumeralLiteral(_) => "NumeralLiteral",
             TokenType::BooleanLiteral => "BooleanLiteral",
@@ -49,8 +51,8 @@ impl ToString for TokenType {
             TokenType::BlockEnd => "BlockEnd",
             TokenType::Return => "Return",
             TokenType::Eof => "Eof",
-        }
-        .to_string()
+        };
+        f.write_str(text)
     }
 }
 
@@ -61,26 +63,25 @@ pub enum CompOperatorSubtype {
     Gt,
     Lt,
     Gte,
-    Lte
+    Lte,
 }
-
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum AdditiveOperatorSubtype {
     Add,
-    Sub
+    Sub,
 }
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum MultiplicativeOperatorSubtype {
     Mul,
-    Div
+    Div,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum UnaryOperatorSubtype {
     Min,
-    Not
+    Not,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -89,7 +90,7 @@ pub enum OperatorType {
     Multiplicative(MultiplicativeOperatorSubtype),
     Exponential,
     Comp(CompOperatorSubtype),
-    Unary(UnaryOperatorSubtype)
+    Unary(UnaryOperatorSubtype),
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -116,7 +117,7 @@ impl Token {
 }
 
 pub struct TokenParser {
-    pos: usize,    // byte offset
+    pos: usize, // byte offset
     column: usize,
     line: usize,
     program: String,
@@ -381,8 +382,12 @@ impl TokenParser {
                     let operator_type = match op {
                         '+' => Some(OperatorType::Additive(AdditiveOperatorSubtype::Add)),
                         '-' => Some(OperatorType::Additive(AdditiveOperatorSubtype::Sub)),
-                        '*' => Some(OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Mul)),
-                        '/' => Some(OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Div)),
+                        '*' => Some(OperatorType::Multiplicative(
+                            MultiplicativeOperatorSubtype::Mul,
+                        )),
+                        '/' => Some(OperatorType::Multiplicative(
+                            MultiplicativeOperatorSubtype::Div,
+                        )),
                         '^' => Some(OperatorType::Exponential),
                         _ => None,
                     };
@@ -467,9 +472,10 @@ mod tests {
     }
 
     #[test]
-    fn parses_numerical_values() -> Result<(), Box<dyn Error>>{
-
-        let numbers = ["1", "100", "200", "123", "12340345", "0.1", "1.001", "100.12"];
+    fn parses_numerical_values() -> Result<(), Box<dyn Error>> {
+        let numbers = [
+            "1", "100", "200", "123", "12340345", "0.1", "1.001", "100.12",
+        ];
 
         for &number in numbers.iter() {
             let result = parse_program(number.to_string());
@@ -485,13 +491,15 @@ mod tests {
     }
 
     #[test]
-    fn malformed_numerical_values_should_not_pass() -> Result<(), Box<dyn Error>>{
-        let result: Result<Vec<Token>, LexerInvalidTokenError> = parse_program(String::from("10..1"));
+    fn malformed_numerical_values_should_not_pass() -> Result<(), Box<dyn Error>> {
+        let result: Result<Vec<Token>, LexerInvalidTokenError> =
+            parse_program(String::from("10..1"));
 
         if let Err(LexerInvalidTokenError {
             kind: LexerInvalidTokenKind::MalformedNumberLiteral(ref literal),
-        ..
-        }) = result {
+            ..
+        }) = result
+        {
             assert_eq!(literal, "10.", "Lexer ingested invalid tokens");
         }
 
@@ -499,8 +507,8 @@ mod tests {
     }
 
     #[test]
-    fn expressions_are_properly_parsed() -> Result<(), Box<dyn Error>>{
-        let test_cases  = [
+    fn expressions_are_properly_parsed() -> Result<(), Box<dyn Error>> {
+        let test_cases = [
             (
                 "1+2+3",
                 vec![
@@ -509,8 +517,8 @@ mod tests {
                     TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::Operator,
                     TokenType::NumeralLiteral(NumeralType::Integer),
-                    TokenType::Eof
-                ]
+                    TokenType::Eof,
+                ],
             ),
             (
                 "if (1 == 1) { 2 }",
@@ -524,8 +532,8 @@ mod tests {
                     TokenType::BlockStart,
                     TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::BlockEnd,
-                    TokenType::Eof
-                ]
+                    TokenType::Eof,
+                ],
             ),
             (
                 "if (1 != 1) { 2 }",
@@ -539,8 +547,8 @@ mod tests {
                     TokenType::BlockStart,
                     TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::BlockEnd,
-                    TokenType::Eof
-                ]
+                    TokenType::Eof,
+                ],
             ),
             (
                 "if (true != false) { 2 }",
@@ -554,19 +562,19 @@ mod tests {
                     TokenType::BlockStart,
                     TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::BlockEnd,
-                    TokenType::Eof
-                ]
-            )
+                    TokenType::Eof,
+                ],
+            ),
         ];
 
         for (program, expected_tokens) in test_cases.iter() {
             let tokens = parse_program(program.to_string())?;
 
-            let actual_token_types: Vec<TokenType> = tokens.iter().map(|t| t.token_type.clone()).collect();
+            let actual_token_types: Vec<TokenType> =
+                tokens.iter().map(|t| t.token_type.clone()).collect();
 
             assert_eq!(
-                actual_token_types,
-                *expected_tokens,
+                actual_token_types, *expected_tokens,
                 "Token mismatch for input: {}",
                 program
             );

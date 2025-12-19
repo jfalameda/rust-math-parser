@@ -1,8 +1,8 @@
-mod println;
+mod math;
 mod print;
+mod println;
 mod readln;
 mod string;
-mod math;
 
 use super::{runtime_errors::RuntimeError, value::Value};
 

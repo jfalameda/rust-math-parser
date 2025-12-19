@@ -2,7 +2,6 @@ use std::{ops, rc::Rc};
 
 use crate::error::error;
 
-
 // Integer values and float should be distinguished, also boolean properly
 // handled.
 #[derive(Debug, PartialEq, Clone)]
@@ -19,9 +18,9 @@ impl Value {
     pub fn to_string(&self) -> Value {
         match self {
             Value::Integer(i) => Value::String(Rc::from(i.to_string())),
-            Value::Float(f)   => Value::String(Rc::from(f.to_string())),
-            Value::Boolean(b)=> Value::String(Rc::from(b.to_string())),
-            Value::Empty     => Value::String(Rc::from("")),
+            Value::Float(f) => Value::String(Rc::from(f.to_string())),
+            Value::Boolean(b) => Value::String(Rc::from(b.to_string())),
+            Value::Empty => Value::String(Rc::from("")),
             Value::String(s) => Value::String(s.clone()), // cheap Rc clone
         }
     }
@@ -37,7 +36,11 @@ impl Value {
         match self {
             Value::Integer(_) | Value::Float(_) => self.clone(),
             Value::Boolean(b) => {
-                if *b { Value::Integer(1) } else { Value::Integer(0) }
+                if *b {
+                    Value::Integer(1)
+                } else {
+                    Value::Integer(0)
+                }
             }
             Value::Empty => Value::Integer(0),
             Value::String(s) => {
@@ -89,14 +92,14 @@ impl Value {
         let result = match (self, other) {
             // same-type
             (Value::Integer(a), Value::Integer(b)) => a == b,
-            (Value::Float(a),   Value::Float(b))   => a == b,
-            (Value::String(a),  Value::String(b))  => a == b,
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
-            (Value::Empty,      Value::Empty)      => true,
+            (Value::Empty, Value::Empty) => true,
 
             // cross numeric
             (Value::Integer(a), Value::Float(b)) => (*a as f64) == *b,
-            (Value::Float(a),   Value::Integer(b)) => *a == (*b as f64),
+            (Value::Float(a), Value::Integer(b)) => *a == (*b as f64),
 
             _ => false,
         };
@@ -108,14 +111,14 @@ impl Value {
         let result = match (self, other) {
             // same-type
             (Value::Integer(a), Value::Integer(b)) => a > b,
-            (Value::Float(a),   Value::Float(b))   => a > b,
-            (Value::String(a),  Value::String(b))  => a > b,
+            (Value::Float(a), Value::Float(b)) => a > b,
+            (Value::String(a), Value::String(b)) => a > b,
             (Value::Boolean(a), Value::Boolean(b)) => a > b,
-            (Value::Empty,      Value::Empty)      => false,
+            (Value::Empty, Value::Empty) => false,
 
             // cross numeric
             (Value::Integer(a), Value::Float(b)) => (*a as f64) > *b,
-            (Value::Float(a),   Value::Integer(b)) => *a > (*b as f64),
+            (Value::Float(a), Value::Integer(b)) => *a > (*b as f64),
 
             _ => false,
         };
@@ -127,14 +130,14 @@ impl Value {
         let result = match (self, other) {
             // same-type
             (Value::Integer(a), Value::Integer(b)) => a >= b,
-            (Value::Float(a),   Value::Float(b))   => a >= b,
-            (Value::String(a),  Value::String(b))  => a >= b,
+            (Value::Float(a), Value::Float(b)) => a >= b,
+            (Value::String(a), Value::String(b)) => a >= b,
             (Value::Boolean(a), Value::Boolean(b)) => a >= b,
-            (Value::Empty,      Value::Empty)      => false,
+            (Value::Empty, Value::Empty) => false,
 
             // cross numeric
             (Value::Integer(a), Value::Float(b)) => (*a as f64) >= *b,
-            (Value::Float(a),   Value::Integer(b)) => *a >= (*b as f64),
+            (Value::Float(a), Value::Integer(b)) => *a >= (*b as f64),
 
             _ => false,
         };
@@ -146,14 +149,14 @@ impl Value {
         let result = match (self, other) {
             // same-type
             (Value::Integer(a), Value::Integer(b)) => a < b,
-            (Value::Float(a),   Value::Float(b))   => a < b,
-            (Value::String(a),  Value::String(b))  => a < b,
+            (Value::Float(a), Value::Float(b)) => a < b,
+            (Value::String(a), Value::String(b)) => a < b,
             (Value::Boolean(a), Value::Boolean(b)) => a < b,
-            (Value::Empty,      Value::Empty)      => false,
+            (Value::Empty, Value::Empty) => false,
 
             // cross numeric
             (Value::Integer(a), Value::Float(b)) => (*a as f64) < *b,
-            (Value::Float(a),   Value::Integer(b)) => *a < (*b as f64),
+            (Value::Float(a), Value::Integer(b)) => *a < (*b as f64),
 
             _ => false,
         };
@@ -165,14 +168,14 @@ impl Value {
         let result = match (self, other) {
             // same-type
             (Value::Integer(a), Value::Integer(b)) => a <= b,
-            (Value::Float(a),   Value::Float(b))   => a <= b,
-            (Value::String(a),  Value::String(b))  => a <= b,
+            (Value::Float(a), Value::Float(b)) => a <= b,
+            (Value::String(a), Value::String(b)) => a <= b,
             (Value::Boolean(a), Value::Boolean(b)) => a <= b,
-            (Value::Empty,      Value::Empty)      => false,
+            (Value::Empty, Value::Empty) => false,
 
             // cross numeric
             (Value::Integer(a), Value::Float(b)) => (*a as f64) <= *b,
-            (Value::Float(a),   Value::Integer(b)) => *a <= (*b as f64),
+            (Value::Float(a), Value::Integer(b)) => *a <= (*b as f64),
 
             _ => false,
         };
@@ -191,7 +194,12 @@ impl Value {
     ///
     /// Returns `Value::Integer(i64)` if both operands were integers and operation result fits in i64,
     /// otherwise `Value::Float`.
-    fn numeric_binop<FInt, FFloat>(left: Value, right: Value, int_op: FInt, float_op: FFloat) -> Value
+    fn numeric_binop<FInt, FFloat>(
+        left: Value,
+        right: Value,
+        int_op: FInt,
+        float_op: FFloat,
+    ) -> Value
     where
         FInt: Fn(i64, i64) -> Option<i64>,
         FFloat: Fn(f64, f64) -> f64,
@@ -201,13 +209,11 @@ impl Value {
 
         match (lnum, rnum) {
             (Value::Integer(li), Value::Integer(ri)) => {
-                // try integer operation (some ops may overflow or be undefined)
                 if let Some(res_i) = int_op(li, ri) {
-                    return Value::Integer(res_i);
+                    Value::Integer(res_i)
                 } else {
-                    // fall back to float op if integer op can't represent the result
                     let res_f = float_op(li as f64, ri as f64);
-                    return Value::Float(res_f);
+                    Value::Float(res_f)
                 }
             }
             (lother, rother) => {
@@ -260,9 +266,11 @@ impl ops::Add<Value> for Value {
         }
 
         // Numeric addition
-        Value::numeric_binop(self, right,
+        Value::numeric_binop(
+            self,
+            right,
             |a, b| a.checked_add(b), // integer op
-            |a, b| a + b             // float op
+            |a, b| a + b,            // float op
         )
     }
 }
@@ -271,10 +279,7 @@ impl ops::Sub<Value> for Value {
     type Output = Value;
 
     fn sub(self, right: Value) -> Value {
-        Value::numeric_binop(self, right,
-            |a, b| a.checked_sub(b),
-            |a, b| a - b
-        )
+        Value::numeric_binop(self, right, |a, b| a.checked_sub(b), |a, b| a - b)
     }
 }
 
@@ -282,10 +287,7 @@ impl ops::Mul<Value> for Value {
     type Output = Value;
 
     fn mul(self, right: Value) -> Value {
-        Value::numeric_binop(self, right,
-            |a, b| a.checked_mul(b),
-            |a, b| a * b
-        )
+        Value::numeric_binop(self, right, |a, b| a.checked_mul(b), |a, b| a * b)
     }
 }
 
@@ -313,7 +315,7 @@ pub trait Convert: Sized {
 }
 
 macro_rules! impl_convert {
-    ($t:ty, $id:ident) => (
+    ($t:ty, $id:ident) => {
         impl Convert for $t {
             fn convert(v: Value) -> Option<$t> {
                 match v {
@@ -322,7 +324,7 @@ macro_rules! impl_convert {
                 }
             }
         }
-    )
+    };
 }
 
 impl_convert!(f64, Float);

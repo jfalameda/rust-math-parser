@@ -34,7 +34,8 @@ impl fmt::Display for RuntimeError {
         if !self.stack.is_empty() {
             writeln!(f, "Call stack:")?;
             for frame in self.stack.iter().rev() {
-                let location_str = frame.location
+                let location_str = frame
+                    .location
                     .map(|loc| loc.to_string())
                     .unwrap_or_else(|| "?".to_string());
                 writeln!(f, "  at {} ({})", frame.function, location_str)?;

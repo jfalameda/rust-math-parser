@@ -2,9 +2,8 @@ mod harness;
 
 use harness::{reset_assertions, take_assertions, AssertionRecord};
 use parser::{
-    interpreter::{interpreter::Interpreter, runtime_errors::RuntimeError},
-    lexer,
-    parser as ast_parser,
+    interpreter::{runtime_errors::RuntimeError, Interpreter},
+    lexer, parser as ast_parser,
 };
 
 fn run_source(source: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) {
@@ -17,7 +16,7 @@ fn run_source(source: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) 
     let ast = parser.parse().expect("parser should succeed");
 
     let mut interpreter = Interpreter::new();
-    let result = interpreter.evaluate(Some(&ast));
+    let result = interpreter.evaluate(Some(ast.as_ref()));
     let assertions = take_assertions();
 
     (result, assertions)
@@ -114,26 +113,28 @@ mod tests {
 
         expect_assertions(
             source,
-            &["integer literal equality",
-              "float literal equality",
-              "unary minus literal",
-              "unary minus identifier",
-              "boolean literal truthiness",
-              "string literal equality",
-              "string concatenation",
-              "string + number",
-              "string + bool",
-              "parentheses grouping",
-              "complex mixed arithmetic",
-              "exponent precedence",
-              "equality operator",
-              "inequality operator",
-              "greater than operator",
-              "greater than or equal operator",
-              "less than operator",
-              "less than or equal operator",
-              "comparison chain boolean",
-              "logical not operator"]
+            &[
+                "integer literal equality",
+                "float literal equality",
+                "unary minus literal",
+                "unary minus identifier",
+                "boolean literal truthiness",
+                "string literal equality",
+                "string concatenation",
+                "string + number",
+                "string + bool",
+                "parentheses grouping",
+                "complex mixed arithmetic",
+                "exponent precedence",
+                "equality operator",
+                "inequality operator",
+                "greater than operator",
+                "greater than or equal operator",
+                "less than operator",
+                "less than or equal operator",
+                "comparison chain boolean",
+                "logical not operator",
+            ],
         );
     }
 
@@ -167,12 +168,14 @@ mod tests {
 
         expect_assertions(
             source,
-            &["if block runs",
-              "outer scope preserved",
-              "else block executes",
-              "single statement if executes",
-              "single statement else executes",
-              "nested else-if executes branch"]
+            &[
+                "if block runs",
+                "outer scope preserved",
+                "else block executes",
+                "single statement if executes",
+                "single statement else executes",
+                "nested else-if executes branch",
+            ],
         );
     }
 
@@ -221,11 +224,13 @@ mod tests {
 
         expect_assertions(
             source,
-            &["double returns value",
-              "conditional sum returns branch result",
-              "conditional sum returns else result",
-              "function arguments shadow correctly",
-              "nested function call works"]
+            &[
+                "double returns value",
+                "conditional sum returns branch result",
+                "conditional sum returns else result",
+                "function arguments shadow correctly",
+                "nested function call works",
+            ],
         );
     }
 
@@ -258,17 +263,19 @@ mod tests {
 
         expect_assertions(
             source,
-            &["sin(0) equals 0",
-              "cos(0) equals 1",
-              "str_concat concatenates all arguments",
-              "string plus number coerces number",
-              "string plus bool coerces bool",
-              "to_number parses integer",
-              "to_number parses float",
-              "print returns falsy empty value",
-              "println returns falsy empty value",
-              "print coerces empty value to string",
-              "println coerces empty value to string"]
+            &[
+                "sin(0) equals 0",
+                "cos(0) equals 1",
+                "str_concat concatenates all arguments",
+                "string plus number coerces number",
+                "string plus bool coerces bool",
+                "to_number parses integer",
+                "to_number parses float",
+                "print returns falsy empty value",
+                "println returns falsy empty value",
+                "print coerces empty value to string",
+                "println coerces empty value to string",
+            ],
         );
     }
 }

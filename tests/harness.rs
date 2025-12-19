@@ -39,10 +39,12 @@ fn fn_assert(args: Vec<Value>) -> Result<Value, RuntimeError> {
 
     let passed = args.get(1).unwrap().to_bool();
 
-    ASSERT_LOG.with(|log| log.borrow_mut().push(AssertionRecord {
-        message: message.clone(),
-        passed,
-    }));
+    ASSERT_LOG.with(|log| {
+        log.borrow_mut().push(AssertionRecord {
+            message: message.clone(),
+            passed,
+        })
+    });
 
     if passed {
         Ok(Value::Empty)

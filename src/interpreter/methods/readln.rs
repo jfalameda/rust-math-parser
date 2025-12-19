@@ -1,6 +1,12 @@
-use std::{io::{self, BufRead, Write, stdout}, rc::Rc};
+use std::{
+    io::{self, stdout, BufRead, Write},
+    rc::Rc,
+};
 
-use crate::{interpreter::{runtime_errors::RuntimeError, value::Value}, register_method};
+use crate::{
+    interpreter::{runtime_errors::RuntimeError, value::Value},
+    register_method,
+};
 
 pub fn fn_readln(args: Vec<Value>) -> Result<Value, RuntimeError> {
     // Print all arguments without converting to String::convert
@@ -24,7 +30,8 @@ pub fn fn_readln(args: Vec<Value>) -> Result<Value, RuntimeError> {
     // Remove trailing newline
     if line.ends_with('\n') {
         line.pop();
-        if line.ends_with('\r') { // handle Windows CRLF
+        if line.ends_with('\r') {
+            // handle Windows CRLF
             line.pop();
         }
     }

@@ -1,4 +1,7 @@
-use crate::{interpreter::{runtime_errors::RuntimeError, value::Value}, register_method};
+use crate::{
+    interpreter::{runtime_errors::RuntimeError, value::Value},
+    register_method,
+};
 
 pub fn fn_print(args: Vec<Value>) -> Result<Value, RuntimeError> {
     for arg in args.iter() {
