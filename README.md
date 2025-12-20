@@ -71,9 +71,9 @@ println("Multiplication: " + multiply(1, 2));
 | Arithmetic      | `+`, `-`, `*`, `/`, `^`      | `^` is right-associative; `/` performs floating-point division when needed. |
 | Comparison      | `==`, `!=`, `>`, `>=`, `<`, `<=` | Yield boolean results. |
 | Unary           | `-`, `!`                     | `-` negates numbers; `!` negates booleans. |
+| Boolean         | `&&`, `||`                   | Short-circuit evaluation using the runtime's truthiness rules. |
 
 - If either operand of `+` is a string, the result is string concatenation.
-- There are no logical `&&`/`||` operators yet; combine booleans via comparisons and `!`.
 
 ### Functions
 - Define a function with `func name(arg1, arg2) { ... }`.

@@ -88,6 +88,14 @@ impl Value {
         }
     }
 
+    pub fn and_value(&self, other: &Value) -> Value {
+        Value::Boolean(self.to_bool() && other.to_bool())
+    }
+
+    pub fn or_value(&self, other: &Value) -> Value {
+        Value::Boolean(self.to_bool() || other.to_bool())
+    }
+
     pub fn eq_value(&self, other: &Value) -> Value {
         let result = match (self, other) {
             // same-type
@@ -331,3 +339,40 @@ impl_convert!(f64, Float);
 impl_convert!(Rc<str>, String);
 impl_convert!(i64, Integer);
 impl_convert!(bool, Boolean);
+
+#[cfg(test)]
+mod tests {
+    use super::Value;
+    use std::rc::Rc;
+
+    #[test]
+    fn and_uses_truthiness_rules() {
+        let true_bool = Value::Boolean(true);
+        let false_bool = Value::Boolean(false);
+        let numeric_true = Value::Integer(10);
+        let numeric_false = Value::Integer(0);
+
+        assert_eq!(
+            true_bool.and_value(&numeric_true),
+            Value::Boolean(true)
+        );
+        assert_eq!(
+            true_bool.and_value(&false_bool),
+            Value::Boolean(false)
+        );
+        assert_eq!(
+            numeric_false.and_value(&numeric_true),
+            Value::Boolean(false)
+        );
+    }
+
+    #[test]
+    fn or_uses_truthiness_rules() {
+        let empty = Value::Empty;
+        let string_truthy = Value::String(Rc::from("yep"));
+        let string_false = Value::String(Rc::from("false"));
+
+        assert_eq!(empty.or_value(&string_truthy), Value::Boolean(true));
+        assert_eq!(string_false.or_value(&empty), Value::Boolean(false));
+    }
+}

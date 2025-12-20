@@ -2,8 +2,7 @@ use super::methods::get_method;
 use super::value::Value;
 use crate::interpreter::{execution_context::ExecutionContext, runtime_errors::RuntimeError};
 use crate::lexer::{
-    AdditiveOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType,
-    UnaryOperatorSubtype,
+    AdditiveOperatorSubtype, BooleanOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype
 };
 use crate::node::{
     Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program,
@@ -208,6 +207,24 @@ impl Interpreter {
             }
             Expression::BinaryOperation(left, op, right) => {
                 let left_val = self.evaluate_expression(left)?;
+
+                // Evaluate lazily
+                if let OperatorType::Boolean(BooleanOperatorSubtype::And) = op {
+                    if !left_val.to_bool() {
+                        return Ok(Value::Boolean(false));
+                    }
+                    let right_val = self.evaluate_expression(right)?;
+                    return Ok(left_val.and_value(&right_val));
+                }
+
+                if let OperatorType::Boolean(BooleanOperatorSubtype::Or) = op {
+                    if left_val.to_bool() {
+                        return Ok(Value::Boolean(true));
+                    }
+                    let right_val = self.evaluate_expression(right)?;
+                    return Ok(left_val.or_value(&right_val));
+                }
+
                 let right_val = self.evaluate_expression(right)?;
 
                 // String concatenation
@@ -236,6 +253,7 @@ impl Interpreter {
                         CompOperatorSubtype::Gte => left_val.gte_value(&right_val),
                         CompOperatorSubtype::Lte => left_val.lte_value(&right_val),
                     },
+                    OperatorType::Boolean(_) => unreachable!(),
                     OperatorType::Unary(_) => {
                         return Err(self.error_with_stack("Unary operation unexpected"));
                     }

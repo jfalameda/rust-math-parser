@@ -84,12 +84,19 @@ pub enum UnaryOperatorSubtype {
     Not,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum BooleanOperatorSubtype {
+    And,
+    Or
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum OperatorType {
     Additive(AdditiveOperatorSubtype),
     Multiplicative(MultiplicativeOperatorSubtype),
     Exponential,
     Comp(CompOperatorSubtype),
+    Boolean(BooleanOperatorSubtype),
     Unary(UnaryOperatorSubtype),
 }
 
@@ -110,6 +117,7 @@ impl Token {
             Some(OperatorType::Multiplicative(_)) => (2, false),
             Some(OperatorType::Exponential) => (3, true),
             Some(OperatorType::Comp(_)) => (4, false),
+            Some(OperatorType::Boolean(_)) => (5, false),
             Some(OperatorType::Unary(_)) => (1, false), // It does not apply for binary ops
             None => (1, false),
         }
@@ -193,6 +201,34 @@ impl TokenParser {
                         token_type: TokenType::EndOfstatement,
                         operator_type: None,
                         value: Some(";".to_string()),
+                    });
+                }
+
+                '&' if self.peek_with_offset(1) == Some('&') => {
+                    let start = self.pos;
+                    self.digest();
+                    self.digest();
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::Operator,
+                        operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::And)),
+                        value: Some("&&".to_string()),
+                    });
+                }
+
+                '|' if self.peek_with_offset(1) == Some('|') => {
+                    let start = self.pos;
+                    self.digest();
+                    self.digest();
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::Operator,
+                        operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::Or)),
+                        value: Some("==".to_string()),
                     });
                 }
 
@@ -413,6 +449,50 @@ impl TokenParser {
                         operator_type: Some(OperatorType::Unary(UnaryOperatorSubtype::Not)),
                         value: Some("!".to_string()),
                     });
+                }
+
+                '&' => {
+                    let start = self.pos;
+                    self.digest();
+                    if self.peek() == Some('&') {
+                        self.digest();
+                        tokens.push(Token {
+                            start,
+                            end: self.pos,
+                            line: self.line,
+                            token_type: TokenType::Operator,
+                            operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::And)),
+                            value: Some("&&".to_string()),
+                        });
+                    } else {
+                        return Err(LexerInvalidTokenError {
+                            kind: LexerInvalidTokenKind::UnexpectedToken("&".to_string()),
+                            line: self.line,
+                            column: self.column,
+                        });
+                    }
+                }
+
+                '|' => {
+                    let start = self.pos;
+                    self.digest();
+                    if self.peek() == Some('|') {
+                        self.digest();
+                        tokens.push(Token {
+                            start,
+                            end: self.pos,
+                            line: self.line,
+                            token_type: TokenType::Operator,
+                            operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::Or)),
+                            value: Some("||".to_string()),
+                        });
+                    } else {
+                        return Err(LexerInvalidTokenError {
+                            kind: LexerInvalidTokenKind::UnexpectedToken("|".to_string()),
+                            line: self.line,
+                            column: self.column,
+                        });
+                    }
                 }
 
                 '(' | ')' | '{' | '}' | ',' => {

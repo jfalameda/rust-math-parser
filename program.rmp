@@ -17,6 +17,12 @@ let bools = 1 + true + false;
 
 let bool_ops = !true == true;
 
+let bools_and = true && true;
+
+let bools_or = true || false;
+
+println("Bool operations, and: " + bools_and + ", or: " + bools_or);
+
 // Print variable a
 println("Result main: ", main_expr);
 // Concatenation using + symbol
@@ -85,7 +91,7 @@ func sub(a, b) {
         return a - b;
     }
 
-    sub2(1, 2);
+    sub2(1);
     
     if (a)
         return ret;

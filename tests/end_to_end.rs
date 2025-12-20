@@ -139,6 +139,52 @@ mod tests {
     }
 
     #[test]
+    fn executes_logical_operators() {
+        let source = r#"
+        func fail_and() {
+            assert("right operand of && evaluated unexpectedly", false);
+            return true;
+        }
+
+        func fail_or() {
+            assert("right operand of || evaluated unexpectedly", false);
+            return false;
+        }
+
+        func record_and() {
+            assert("&& evaluates right operand when left true", true);
+            return true;
+        }
+
+        func record_or() {
+            assert("|| evaluates right operand when left false", true);
+            return true;
+        }
+
+        let and_short = false && fail_and();
+        let and_truthy = true && record_and();
+        let or_short = true || fail_or();
+        let or_truthy = false || record_or();
+        assert("&& short-circuits false left", !and_short);
+        assert("&& produces truthy when both true", and_truthy);
+        assert("|| short-circuits true left", or_short);
+        assert("|| produces truthy when right true", or_truthy);
+        "#;
+
+        expect_assertions(
+            source,
+            &[
+                "&& evaluates right operand when left true",
+                "|| evaluates right operand when left false",
+                "&& short-circuits false left",
+                "&& produces truthy when both true",
+                "|| short-circuits true left",
+                "|| produces truthy when right true",
+            ],
+        );
+    }
+
+    #[test]
     fn executes_conditionals_and_scopes() {
         let source = r#"
         let outer = "outer";
