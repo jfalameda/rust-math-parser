@@ -71,7 +71,7 @@ println("Multiplication: " + multiply(1, 2));
 | Arithmetic      | `+`, `-`, `*`, `/`, `^`      | `^` is right-associative; `/` performs floating-point division when needed. |
 | Comparison      | `==`, `!=`, `>`, `>=`, `<`, `<=` | Yield boolean results. |
 | Unary           | `-`, `!`                     | `-` negates numbers; `!` negates booleans. |
-| Boolean         | `&&`, `||`                   | Short-circuit evaluation using the runtime's truthiness rules. |
+| Boolean         | `&&`, `\|\|`                   | Short-circuit evaluation using the runtime's truthiness rules. |
 
 - If either operand of `+` is a string, the result is string concatenation.
 
