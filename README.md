@@ -103,3 +103,5 @@ println("Multiplication: " + multiply(1, 2));
 - Implement simple structures as objects and arrays
 - Implement for and while
 - Built-in functions should be able to throw errors
+- Implement reserved words
+- Implement objects
