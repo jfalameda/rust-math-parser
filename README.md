@@ -96,7 +96,7 @@ println("Multiplication: " + multiply(1, 2));
 - Write tests
 - Implement mechanism on the interpreter to check for mandatory function arguments (consider semantic analysis)
 - Make functions first class citizens
-- Check for undefined variables
+- Check for undefined variables (also semantic analysis)
 - Implement assignment without declaration
 - Improve syntax errors
 - Find a better way to handle unary tokens and parsing. Right now binary and unary are mixed as Operators.
