@@ -219,19 +219,19 @@ impl Parser {
                 Some(TokenType::ParenthesisL)
             )
         {
-            self.parse_method_call()
+            self.parse_function_call()
         } else {
             self.parse_binary_expression(precedence)
         }
     }
 
-    fn parse_method_call(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_function_call(&mut self) -> Result<Box<Expression>, ParserError> {
         let method_name = self.digest(TokenType::Symbol)?;
         self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
-        Ok(build_method_call_node(
+        Ok(build_funcion_call_node(
             method_name.value.ok_or_else(error_eof)?,
             args,
             method_name.line,

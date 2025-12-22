@@ -52,7 +52,7 @@ pub enum Expression {
     IfConditional(Box<Expression>, Block, Option<Block>),
 }
 
-pub fn build_method_call_node(
+pub fn build_function_call_node(
     method_name: String,
     args: Vec<Expression>,
     location: usize,
