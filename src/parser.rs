@@ -3,7 +3,7 @@ use crate::lexer::{
 };
 use crate::node::{
     build_assignment_node, build_conditional_node, build_function_declaration_node,
-    build_method_call_node, build_node, build_program_node, build_return_node,
+    build_function_call_node, build_node, build_program_node, build_return_node,
     build_statement_node, build_unary_node, Block, Expression,
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
@@ -231,7 +231,7 @@ impl Parser {
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
-        Ok(build_funcion_call_node(
+        Ok(build_function_call_node(
             method_name.value.ok_or_else(error_eof)?,
             args,
             method_name.line,
