@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     interpreter::{
         call_stack::{CallStack, StackFrame},
@@ -53,7 +55,7 @@ impl ExecutionContext {
     pub fn define_variable_in_scope(
         &mut self,
         identifier: &str,
-        value: Value,
+        value: Rc<Value>,
     ) -> Result<(), RuntimeError> {
         self.scope_arena
             .define_variable(self.current_scope, identifier, value);
@@ -76,7 +78,7 @@ impl ExecutionContext {
             .cloned()
     }
 
-    pub fn lookup_variable_in_scope(&mut self, identifier: &str) -> Option<&Value> {
+    pub fn lookup_variable_in_scope(&mut self, identifier: &str) -> Option<Rc<Value>> {
         self.scope_arena
             .lookup_variable(self.current_scope, identifier)
     }
@@ -89,9 +91,10 @@ impl ExecutionContext {
         self.function_depth > 0
     }
 
-    pub fn set_return_value(&mut self, value: Value) {
+    pub fn set_return_value(&mut self, value:Rc<Value>) {
         if let Some(slot) = self.return_values.last_mut() {
-            *slot = Some(value);
+            // When returning we clone the value. No reference passing.
+            *slot = Some(value.as_ref().clone());
         } else {
             panic!("set_return_value called outside of a function");
         }

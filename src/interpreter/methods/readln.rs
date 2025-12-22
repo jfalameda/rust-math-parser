@@ -8,7 +8,7 @@ use crate::{
     register_method,
 };
 
-pub fn fn_readln(args: Vec<Value>) -> Result<Value, RuntimeError> {
+pub fn fn_readln(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
     // Print all arguments without converting to String::convert
     for arg in args.iter() {
         let val_str = arg.to_string(); // returns Value::String(Rc<str>)
@@ -37,7 +37,7 @@ pub fn fn_readln(args: Vec<Value>) -> Result<Value, RuntimeError> {
     }
 
     // Return as Value::String(Rc<str>)
-    Ok(Value::String(Rc::from(line)))
+    Ok(Rc::new(Value::String(Rc::from(line))))
 }
 
 register_method!("readln", fn_readln);

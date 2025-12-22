@@ -4,9 +4,11 @@ mod println;
 mod readln;
 mod string;
 
+use std::rc::Rc;
+
 use super::{runtime_errors::RuntimeError, value::Value};
 
-pub type NativeFn = fn(Vec<Value>) -> Result<Value, RuntimeError>;
+pub type NativeFn = fn(Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError>;
 
 pub struct Method {
     pub name: &'static str,
@@ -15,7 +17,7 @@ pub struct Method {
 
 inventory::collect!(Method);
 
-pub fn get_method(name: String, args: Vec<Value>) -> Result<Value, RuntimeError> {
+pub fn get_method(name: String, args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
     for method in inventory::iter::<Method> {
         if method.name == name {
             return (method.func)(args);

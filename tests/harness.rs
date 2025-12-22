@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, rc::Rc};
 
 use parser::{
     interpreter::{runtime_errors::RuntimeError, value::Value},
@@ -23,7 +23,7 @@ pub fn take_assertions() -> Vec<AssertionRecord> {
     ASSERT_LOG.with(|log| log.borrow_mut().drain(..).collect())
 }
 
-fn fn_assert(args: Vec<Value>) -> Result<Value, RuntimeError> {
+fn fn_assert(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
     if args.len() != 2 {
         return Err(RuntimeError::new(format!(
             "assert expects 2 arguments, got {}",
@@ -47,7 +47,7 @@ fn fn_assert(args: Vec<Value>) -> Result<Value, RuntimeError> {
     });
 
     if passed {
-        Ok(Value::Empty)
+        Ok(Rc::new(Value::Empty))
     } else {
         Err(RuntimeError::new(message))
     }

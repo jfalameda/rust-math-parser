@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{interpreter::value::Value, node::FunctionDeclaration};
 
@@ -7,7 +7,7 @@ pub type ScopeId = usize;
 #[derive(Debug)]
 pub struct Scope {
     parent: Option<ScopeId>,
-    variables: HashMap<String, Value>,
+    variables: HashMap<String, Rc<Value>>,
     functions: HashMap<String, FunctionDeclaration>,
 }
 
@@ -32,7 +32,7 @@ impl ScopeArena {
         self.scopes.len() - 1
     }
 
-    pub fn define_variable(&mut self, scope_id: ScopeId, name: impl Into<String>, value: Value) {
+    pub fn define_variable(&mut self, scope_id: ScopeId, name: impl Into<String>, value: Rc<Value>) {
         self.scopes[scope_id].variables.insert(name.into(), value);
     }
 
@@ -47,10 +47,10 @@ impl ScopeArena {
             .insert(name.into(), function);
     }
 
-    pub fn lookup_variable(&self, mut scope_id: ScopeId, name: &str) -> Option<&Value> {
+    pub fn lookup_variable(&self, mut scope_id: ScopeId, name: &str) -> Option<Rc<Value>> {
         while let Some(scope) = self.scopes.get(scope_id) {
             if let Some(value) = scope.variables.get(name) {
-                return Some(value);
+                return Some(value.clone());
             }
             match scope.parent {
                 Some(parent) => scope_id = parent,

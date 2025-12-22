@@ -203,8 +203,8 @@ impl Value {
     /// Returns `Value::Integer(i64)` if both operands were integers and operation result fits in i64,
     /// otherwise `Value::Float`.
     fn numeric_binop<FInt, FFloat>(
-        left: Value,
-        right: Value,
+        left: &Value,
+        right: &Value,
         int_op: FInt,
         float_op: FFloat,
     ) -> Value
@@ -241,7 +241,41 @@ impl Value {
         }
     }
 
-    pub fn power(&self, right: Value) -> Value {
+    pub fn add_value(&self, right: &Value) -> Value {
+        if matches!(self, Value::String(_)) || matches!(right, Value::String(_)) {
+            let left_str = self.to_string();
+            let right_str = right.to_string();
+
+            if let (Value::String(ls), Value::String(rs)) = (left_str, right_str) {
+                let mut buf = String::with_capacity(ls.len() + rs.len());
+                buf.push_str(&ls);
+                buf.push_str(&rs);
+                return Value::String(Rc::from(buf));
+            }
+        }
+
+        Value::numeric_binop(self, right, |a, b| a.checked_add(b), |a, b| a + b)
+    }
+
+    pub fn sub_value(&self, right: &Value) -> Value {
+        Value::numeric_binop(self, right, |a, b| a.checked_sub(b), |a, b| a - b)
+    }
+
+    pub fn mul_value(&self, right: &Value) -> Value {
+        Value::numeric_binop(self, right, |a, b| a.checked_mul(b), |a, b| a * b)
+    }
+
+    pub fn div_value(&self, right: &Value) -> Value {
+        let lf = self.to_f64();
+        let rf = right.to_f64();
+
+        if rf == 0.0 {
+            error("Division by zero");
+        }
+        Value::Float(lf / rf)
+    }
+
+    pub fn power(&self, right: &Value) -> Value {
         let left_f = self.to_f64();
         let right_f = right.to_f64();
         Value::Float(left_f.powf(right_f))
@@ -252,34 +286,7 @@ impl ops::Add<Value> for Value {
     type Output = Value;
 
     fn add(self, right: Value) -> Value {
-        // If either side is a String, perform textual concatenation
-        if matches!(self, Value::String(_)) || matches!(right, Value::String(_)) {
-            // Borrow `self` and `right` for matching to avoid moving
-            let s_left = match &self {
-                Value::String(_) => self.to_string(), // consumes self here is okay because to_string() returns Value
-                other => other.to_string(),
-            };
-            let s_right = match &right {
-                Value::String(_) => right.to_string(), // consumes right here is okay
-                other => other.to_string(),
-            };
-
-            // both to_string() returned Value::String
-            if let (Value::String(ls), Value::String(rs)) = (s_left, s_right) {
-                let mut buf = String::with_capacity(ls.len() + rs.len());
-                buf.push_str(&ls);
-                buf.push_str(&rs);
-                return Value::String(Rc::from(buf));
-            }
-        }
-
-        // Numeric addition
-        Value::numeric_binop(
-            self,
-            right,
-            |a, b| a.checked_add(b), // integer op
-            |a, b| a + b,            // float op
-        )
+        self.add_value(&right)
     }
 }
 
@@ -287,7 +294,7 @@ impl ops::Sub<Value> for Value {
     type Output = Value;
 
     fn sub(self, right: Value) -> Value {
-        Value::numeric_binop(self, right, |a, b| a.checked_sub(b), |a, b| a - b)
+        self.sub_value(&right)
     }
 }
 
@@ -295,7 +302,7 @@ impl ops::Mul<Value> for Value {
     type Output = Value;
 
     fn mul(self, right: Value) -> Value {
-        Value::numeric_binop(self, right, |a, b| a.checked_mul(b), |a, b| a * b)
+        self.mul_value(&right)
     }
 }
 
@@ -303,15 +310,7 @@ impl ops::Div<Value> for Value {
     type Output = Value;
 
     fn div(self, right: Value) -> Value {
-        // division always as float (to preserve fractional results and avoid divide-by-zero integer traps)
-        let lf = self.to_f64();
-        let rf = right.to_f64();
-
-        // guard divide by zero
-        if rf == 0.0 {
-            error("Division by zero");
-        }
-        Value::Float(lf / rf)
+        self.div_value(&right)
     }
 }
 

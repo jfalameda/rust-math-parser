@@ -6,7 +6,7 @@ use crate::{
 use std::rc::Rc;
 
 /// Concatenate multiple Values into a single string
-pub fn fn_str_concat(args: Vec<Value>) -> Result<Value, RuntimeError> {
+pub fn fn_str_concat(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
     let mut concat_str = String::new();
 
     for arg in args.iter() {
@@ -19,16 +19,16 @@ pub fn fn_str_concat(args: Vec<Value>) -> Result<Value, RuntimeError> {
         }
     }
 
-    Ok(Value::String(Rc::from(concat_str)))
+    Ok(Rc::new(Value::String(Rc::from(concat_str))))
 }
 
 /// Convert a Value to a numeric Value (Integer or Float)
-pub fn fn_to_number(args: Vec<Value>) -> Result<Value, RuntimeError> {
+pub fn fn_to_number(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
     let value = args
         .first()
         .expect("fn_to_number requires at least one argument");
 
-    let result = match value {
+    let result = match value.as_ref() {
         Value::String(rc) => {
             let s = rc.as_ref(); // &str from Rc<str>
 
@@ -45,7 +45,7 @@ pub fn fn_to_number(args: Vec<Value>) -> Result<Value, RuntimeError> {
         _ => value.to_number(), // other types use existing coercion
     };
 
-    Ok(result)
+    Ok(Rc::new(result))
 }
 
 register_method!("str_concat", fn_str_concat);
