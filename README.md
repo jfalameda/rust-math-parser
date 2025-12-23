@@ -54,16 +54,16 @@ println("Multiplication: " + multiply(1, 2));
 - Single-line comments start with `//` and run until the end of the line.
 
 ### Literals
-- Integers (`42`), floats (`3.14`), booleans (`true`, `false`) and double-quoted strings (`"hello"`).
+- Integers (`42`), floats (`3.14`), booleans (`true`, `false`) and double quoted strings (`"hello"`).
 - Numeric literals support unary negation (e.g. `-5`) and exponentiation via `^`.
 
 ### Variables and scope
-- Declare variables with `let name = expression;` — declarations must include an initializer.
+- Declare variables with `let name = expression;`. Declarations must include an initializer.
 - Variables are scoped to the surrounding block delimited by `{ ... }`.
 
 ### Statements and semicolons
 - Expression statements, assignments and variable declarations must end with `;`.
-- `if` and `func` introduce blocks; branches may use either braces or a single trailing statement (which still requires a semicolon).
+- `if` and `func` introduce blocks; branches may use either braces or a single statement (which still requires a semicolon).
 
 ### Operators
 | Category        | Operators                    | Notes |
@@ -81,9 +81,9 @@ println("Multiplication: " + multiply(1, 2));
 - Call user-defined or built-in functions with `name(arg1, arg2);`.
 
 ### Conditionals
-- `if (condition) { ... } else { ... }` evaluates the condition truthily; an `else` block is optional.
-- Truthiness rules follow the runtime: `0`, `0.0`, empty strings, the string literals `"0"`/`"false"`, and `false` behave as false; everything else is true.
-- Single-statement branches can omit braces but still require terminating semicolons.
+- `if (condition) { ... } else { ... }` evaluates the condition is true; an `else` block is optional.
+- Boolean rules follow the runtime: `0`, `0.0`, empty strings, the string literals `"0"`/`"false"`, and `false` behave as false; everything else is true.
+- Single statement branches can omit braces but still require terminating semicolons.
 
 ### Built-in functions
 - **`print(...)` / `println(...)`** — write values to stdout (with or without a newline).
