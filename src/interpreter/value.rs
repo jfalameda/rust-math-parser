@@ -65,6 +65,10 @@ impl Value {
         }
     }
 
+    pub fn into_rc(self) -> Rc<Value> {
+        Rc::new(self)
+    }
+
     pub fn to_bool(&self) -> bool {
         match self {
             Value::Boolean(b) => *b,
