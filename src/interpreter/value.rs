@@ -1,6 +1,6 @@
 use std::{ops, rc::Rc};
 
-use crate::error::error;
+use crate::{interpreter::runtime_errors::RuntimeError};
 
 // Integer values and float should be distinguished, also boolean properly
 // handled.
@@ -32,44 +32,44 @@ impl Value {
     /// - Boolean -> Integer(1) or Integer(0)
     /// - Empty -> Integer(0)
     /// - String -> parsed Float if contains '.' or exponent or fails -> error
-    pub fn to_number(&self) -> Value {
+    pub fn to_number(&self) -> Result<Value, RuntimeError> {
         match self {
-            Value::Integer(_) | Value::Float(_) => self.clone(),
+            Value::Integer(_) | Value::Float(_) => Ok(self.clone()),
             Value::Boolean(b) => {
                 if *b {
-                    Value::Integer(1)
+                    Ok(Value::Integer(1))
                 } else {
-                    Value::Integer(0)
+                    Ok(Value::Integer(0))
                 }
             }
-            Value::Empty => Value::Integer(0),
+            Value::Empty => Ok(Value::Integer(0)),
             Value::String(s) => {
                 // Try integer parse first, then float
                 if let Ok(i) = s.parse::<i64>() {
-                    Value::Integer(i)
+                    Ok(Value::Integer(i))
                 } else if let Ok(f) = s.parse::<f64>() {
-                    Value::Float(f)
+                    Ok(Value::Float(f))
                 } else {
-                    error(format!("Unable to convert string '{}' to number", s).as_str())
+                    Err(RuntimeError::new(format!("Unable to convert string '{}' to number", s).as_str()))
                 }
             }
         }
     }
     /// Force convert to integer
-    pub fn to_i64(&self) -> i64 {
-        match self.to_number() {
-            Value::Integer(i) => i,
-            Value::Float(f) => f as i64,
-            other => error(format!("Expected numeric value, got {:?}", other).as_str()),
+    pub fn to_i64(&self) -> Result<i64, RuntimeError> {
+        match self.to_number()? {
+            Value::Integer(i) => Ok(i),
+            Value::Float(f) => Ok(f as i64),
+            other => Err(RuntimeError::new(format!("Expected numeric value, got {:?}", other).as_str())),
         }
     }
 
     /// Force-convert to Float (used when float math is required).
-    pub fn to_f64(&self) -> f64 {
-        match self.to_number() {
-            Value::Integer(i) => i as f64,
-            Value::Float(f) => f,
-            other => error(format!("Expected numeric value, got {:?}", other).as_str()),
+    pub fn to_f64(&self) -> Result<f64, RuntimeError> {
+        match self.to_number()? {
+            Value::Integer(i) => Ok(i as f64),
+            Value::Float(f) => Ok(f),
+            other => Err(RuntimeError::new(format!("Expected numeric value, got {:?}", other).as_str())),
         }
     }
 
@@ -219,21 +219,21 @@ impl Value {
         right: &Value,
         int_op: FInt,
         float_op: FFloat,
-    ) -> Value
+    ) -> Result<Value, RuntimeError>
     where
         FInt: Fn(i64, i64) -> Option<i64>,
         FFloat: Fn(f64, f64) -> f64,
     {
-        let lnum = left.to_number();
-        let rnum = right.to_number();
+        let lnum = left.to_number()?;
+        let rnum = right.to_number()?;
 
         match (lnum, rnum) {
             (Value::Integer(li), Value::Integer(ri)) => {
                 if let Some(res_i) = int_op(li, ri) {
-                    Value::Integer(res_i)
+                    Ok(Value::Integer(res_i))
                 } else {
                     let res_f = float_op(li as f64, ri as f64);
-                    Value::Float(res_f)
+                    Ok(Value::Float(res_f))
                 }
             }
             (lother, rother) => {
@@ -248,12 +248,12 @@ impl Value {
                     Value::Float(f) => f,
                     _ => unreachable!(),
                 };
-                Value::Float(float_op(lf, rf))
+                Ok(Value::Float(float_op(lf, rf)))
             }
         }
     }
 
-    pub fn add_value(&self, right: &Value) -> Value {
+    pub fn add_value(&self, right: &Value) -> Result<Value, RuntimeError> {
         if matches!(self, Value::String(_)) || matches!(right, Value::String(_)) {
             let left_str = self.to_string();
             let right_str = right.to_string();
@@ -262,66 +262,66 @@ impl Value {
                 let mut buf = String::with_capacity(ls.len() + rs.len());
                 buf.push_str(&ls);
                 buf.push_str(&rs);
-                return Value::String(Rc::from(buf));
+                return Ok(Value::String(Rc::from(buf)));
             }
         }
 
         Value::numeric_binop(self, right, |a, b| a.checked_add(b), |a, b| a + b)
     }
 
-    pub fn sub_value(&self, right: &Value) -> Value {
+    pub fn sub_value(&self, right: &Value) -> Result<Value, RuntimeError> {
         Value::numeric_binop(self, right, |a, b| a.checked_sub(b), |a, b| a - b)
     }
 
-    pub fn mul_value(&self, right: &Value) -> Value {
+    pub fn mul_value(&self, right: &Value) -> Result<Value, RuntimeError> {
         Value::numeric_binop(self, right, |a, b| a.checked_mul(b), |a, b| a * b)
     }
 
-    pub fn div_value(&self, right: &Value) -> Value {
-        let lf = self.to_f64();
-        let rf = right.to_f64();
+    pub fn div_value(&self, right: &Value) -> Result<Value, RuntimeError> {
+        let lf = self.to_f64()?;
+        let rf = right.to_f64()?;
 
         if rf == 0.0 {
-            error("Division by zero");
+            return Err(RuntimeError::new("Division by zero"));
         }
-        Value::Float(lf / rf)
+        Ok(Value::Float(lf / rf))
     }
 
-    pub fn power(&self, right: &Value) -> Value {
-        let left_f = self.to_f64();
-        let right_f = right.to_f64();
-        Value::Float(left_f.powf(right_f))
+    pub fn power(&self, right: &Value) -> Result<Value, RuntimeError> {
+        let left_f = self.to_f64()?;
+        let right_f = right.to_f64()?;
+        Ok(Value::Float(left_f.powf(right_f)))
     }
 }
 
 impl ops::Add<Value> for Value {
-    type Output = Value;
+    type Output = Result<Value, RuntimeError>;
 
-    fn add(self, right: Value) -> Value {
+    fn add(self, right: Value) -> Self::Output {
         self.add_value(&right)
     }
 }
 
 impl ops::Sub<Value> for Value {
-    type Output = Value;
+    type Output = Result<Value, RuntimeError>;
 
-    fn sub(self, right: Value) -> Value {
+    fn sub(self, right: Value) -> Self::Output {
         self.sub_value(&right)
     }
 }
 
 impl ops::Mul<Value> for Value {
-    type Output = Value;
+    type Output = Result<Value, RuntimeError>;
 
-    fn mul(self, right: Value) -> Value {
+    fn mul(self, right: Value) -> Self::Output {
         self.mul_value(&right)
     }
 }
 
 impl ops::Div<Value> for Value {
-    type Output = Value;
+    type Output = Result<Value, RuntimeError>;
 
-    fn div(self, right: Value) -> Value {
+    fn div(self, right: Value) -> Self::Output {
         self.div_value(&right)
     }
 }

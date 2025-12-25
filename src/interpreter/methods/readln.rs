@@ -11,11 +11,11 @@ use crate::{
 pub fn fn_readln(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     // Print all arguments without converting to String::convert
     for arg in args.iter() {
-        let val_str = arg.to_string(); // returns Value::String(Rc<str>)
+        let val_str = arg.to_string();
         if let Value::String(rc) = val_str {
-            print!("{}", rc); // Rc<str> derefs to str
+            print!("{}", rc);
         } else {
-            unreachable!(); // to_string() always returns Value::String
+            unreachable!();
         }
     }
 
@@ -38,7 +38,6 @@ pub fn fn_readln(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
         }
     }
 
-    // Return as Value::String(Rc<str>)
     Ok(Value::String(Rc::from(line)).into_rc())
 }
 

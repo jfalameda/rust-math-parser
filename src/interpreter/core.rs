@@ -242,7 +242,7 @@ impl Interpreter {
                 let val = self.evaluate_expression(expr)?;
                 match operator {
                     OperatorType::Unary(UnaryOperatorSubtype::Min) => {
-                        Ok(Value::Float(-1.0).mul_value(val.as_ref()).into_rc())
+                        Ok(Value::Float(-1.0).mul_value(val.as_ref())?.into_rc())
                     }
                     OperatorType::Unary(UnaryOperatorSubtype::Not) => {
                         let bool_value = val.to_bool();
@@ -274,18 +274,18 @@ impl Interpreter {
                 let right_val = self.evaluate_expression(right)?;
 
                 let res = match op {
-                    OperatorType::Exponential => left_val.power(right_val.as_ref()),
+                    OperatorType::Exponential => left_val.power(right_val.as_ref())?,
                     OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Mul) => {
-                        left_val.mul_value(right_val.as_ref())
+                        left_val.mul_value(right_val.as_ref())?
                     }
                     OperatorType::Multiplicative(MultiplicativeOperatorSubtype::Div) => {
-                        left_val.div_value(right_val.as_ref())
+                        left_val.div_value(right_val.as_ref())?
                     }
                     OperatorType::Additive(AdditiveOperatorSubtype::Sub) => {
-                        left_val.sub_value(right_val.as_ref())
+                        left_val.sub_value(right_val.as_ref())?
                     }
                     OperatorType::Additive(AdditiveOperatorSubtype::Add) => {
-                        left_val.add_value(right_val.as_ref())
+                        left_val.add_value(right_val.as_ref())?
                     }
                     OperatorType::Comp(comp_type) => match comp_type {
                         CompOperatorSubtype::Eq => left_val.eq_value(&right_val),

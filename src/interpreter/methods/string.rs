@@ -10,12 +10,12 @@ pub fn fn_str_concat(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError>
     let mut concat_str = String::new();
 
     for arg in args.iter() {
-        // Force JS-style string coercion
-        let val_str = arg.to_string(); // Value::String(Rc<str>)
+        // Force string coercion
+        let val_str = arg.to_string();
         if let Value::String(rc) = val_str {
-            concat_str.push_str(&rc); // Rc<str> derefs to &str
+            concat_str.push_str(&rc);
         } else {
-            unreachable!(); // to_string() always returns Value::String
+            unreachable!();
         }
     }
 
@@ -26,7 +26,7 @@ pub fn fn_str_concat(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError>
 pub fn fn_to_number(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     let (value,) = takes_arguments!(args, 1)?;
 
-    let result = value.to_number();
+    let result = value.to_number()?;
 
     Ok(result.into_rc())
 }
