@@ -21,7 +21,7 @@ pub struct Program {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct MethodCall {
+pub struct FunctionCall {
     pub identifier: Identifier,
     pub arguments: Vec<Expression>,
     pub location: usize,
@@ -43,7 +43,7 @@ pub enum Expression {
     UnaryOperation(OperatorType, Box<Expression>),
     Program(Program), // Change to block?
     Statement(Box<Expression>),
-    MethodCall(MethodCall),
+    FunctionCall(FunctionCall),
     Identifier(Identifier),
     Declaration(Identifier, Box<Expression>),
     Block(Block),
@@ -57,7 +57,7 @@ pub fn build_function_call_node(
     args: Vec<Expression>,
     location: usize,
 ) -> Box<Expression> {
-    Box::new(Expression::MethodCall(MethodCall {
+    Box::new(Expression::FunctionCall(FunctionCall {
         identifier: Identifier { name: method_name },
         arguments: args,
         location,

@@ -7,7 +7,7 @@ use crate::lexer::{
     AdditiveOperatorSubtype, BooleanOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype
 };
 use crate::node::{
-    Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program,
+    Block, Expression, FunctionDeclaration, Identifier, Literal, FunctionCall, Program,
 };
 pub enum ControlFlow {
     Continue,
@@ -42,7 +42,7 @@ impl Interpreter {
                 }
                 Expression::Statement(_)
                 | Expression::Declaration(_, _)
-                | Expression::MethodCall(_) => Ok(self.evaluate_statement(node_content)?),
+                | Expression::FunctionCall(_) => Ok(self.evaluate_statement(node_content)?),
                 Expression::IfConditional(expression, if_block, else_block) => {
                     self.evaluate_conditional(expression, if_block, else_block)?;
                     Ok(ControlFlow::Continue)
@@ -111,7 +111,7 @@ impl Interpreter {
                 self.evaluate_assignment(identifier, expr)?;
                 Ok(ControlFlow::Continue)
             }
-            Expression::MethodCall(method_call) => {
+            Expression::FunctionCall(method_call) => {
                 self.evaluate_function_call(method_call)?;
                 Ok(ControlFlow::Continue)
             }
@@ -154,7 +154,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate_function_call(&mut self, node: &MethodCall) -> Result<Rc<Value>, RuntimeError> {
+    fn evaluate_function_call(&mut self, node: &FunctionCall) -> Result<Rc<Value>, RuntimeError> {
         let method_name = &node.identifier.name;
         if let Some(function) = self.execution_context.lookup_function_in_scope(method_name) {
             let FunctionDeclaration {
@@ -197,8 +197,14 @@ impl Interpreter {
 
             Ok(return_value.into_rc())
         } else {
+            self.execution_context
+                .push_frame(method_name.clone(), Some(node.location));
+
             let args = self.evaluate_arguments(&node.arguments)?;
             let result = get_method(method_name.clone(), args);
+
+            self.execution_context.pop_frame();
+            
             result.map_err(|err| self.execution_context.attach_stack(err))
         }
     }
@@ -229,7 +235,7 @@ impl Interpreter {
                 Literal::Float(f) => Value::Float(*f).into_rc(),
                 Literal::String(s) => Value::String(s.clone()).into_rc(), // Cheap Rc clone
             }),
-            Expression::MethodCall(method_call) => self.evaluate_function_call(method_call),
+            Expression::FunctionCall(method_call) => self.evaluate_function_call(method_call),
             Expression::UnaryOperation(operator, expr) => {
                 let val = self.evaluate_expression(expr)?;
                 match operator {

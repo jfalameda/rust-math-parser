@@ -2,7 +2,7 @@ mod harness;
 
 use harness::{reset_assertions, take_assertions, AssertionRecord};
 use parser::{
-    interpreter::{ControlFlow, Interpreter, runtime_errors::RuntimeError},
+    interpreter::{Interpreter, runtime_errors::RuntimeError},
     lexer, parser as ast_parser,
 };
 
