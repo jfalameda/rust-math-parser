@@ -328,29 +328,6 @@ impl ops::Div<Value> for Value {
 
 impl Eq for Value {}
 
-/// Convert trait used in your code base. Keep implementations for types you used.
-pub trait Convert: Sized {
-    fn convert(v: Value) -> Option<Self>;
-}
-
-macro_rules! impl_convert {
-    ($t:ty, $id:ident) => {
-        impl Convert for $t {
-            fn convert(v: Value) -> Option<$t> {
-                match v {
-                    Value::$id(x) => Some(x),
-                    _ => None,
-                }
-            }
-        }
-    };
-}
-
-impl_convert!(f64, Float);
-impl_convert!(Rc<str>, String);
-impl_convert!(i64, Integer);
-impl_convert!(bool, Boolean);
-
 #[cfg(test)]
 mod tests {
     use super::Value;
