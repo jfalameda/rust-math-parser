@@ -27,22 +27,7 @@ pub fn fn_str_concat(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError>
 pub fn fn_to_number(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     let (value,) = takes_arguments!(args, 1)?;
 
-    let result = match value.as_ref() {
-        Value::String(rc) => {
-            let s = rc.as_ref(); // &str from Rc<str>
-
-            if s.is_empty() {
-                Value::Integer(0) // or decide on other behavior for empty string
-            } else if let Ok(i) = s.parse::<i64>() {
-                Value::Integer(i)
-            } else if let Ok(f) = s.parse::<f64>() {
-                Value::Float(f)
-            } else {
-                error(&format!("Cannot convert string '{}' to number", s))
-            }
-        }
-        _ => value.to_number(), // other types use existing coercion
-    };
+    let result = value.to_number();
 
     Ok(result.into_rc())
 }

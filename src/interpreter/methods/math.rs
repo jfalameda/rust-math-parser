@@ -1,6 +1,6 @@
 use crate::{
     interpreter::{
-        methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::{Convert, Value}
+        methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::{Value}
     },
     register_method, takes_arguments,
 };
@@ -8,7 +8,7 @@ use crate::{
 pub fn fn_sin(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     let (angle,) = takes_arguments!(args, 1)?;
 
-    let number = f64::convert(angle.to_number()).unwrap();
+    let number = angle.to_f64();
     
     Ok(Value::Float(f64::sin(number)).into_rc())
 }

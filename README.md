@@ -99,6 +99,7 @@ println("Multiplication: " + multiply(1, 2));
 - Check for undefined variables (also semantic analysis)
 - Implement assignment without declaration
 - Improve syntax errors
+- Value should return results and produce runtime errors.
 - Find a better way to handle unary tokens and parsing. Right now binary and unary are mixed as Operators.
 - Prevent allocations with .clone()
 - Implement simple garbage collector
