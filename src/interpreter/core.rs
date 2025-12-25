@@ -9,6 +9,10 @@ use crate::lexer::{
 use crate::node::{
     Block, Expression, FunctionDeclaration, Identifier, Literal, MethodCall, Program,
 };
+pub enum ControlFlow {
+    Continue,
+    Break
+}
 
 pub struct Interpreter {
     execution_context: ExecutionContext,
@@ -21,30 +25,42 @@ impl Interpreter {
         }
     }
 
-    pub fn evaluate(&mut self, node: Option<&Expression>) -> Result<(), RuntimeError> {
+    pub fn evaluate(&mut self, node: Option<&Expression>) -> Result<ControlFlow, RuntimeError> {
         if let Some(node_content) = node {
             match node_content {
-                Expression::Program(program) => self.evaluate_program(program)?,
+                Expression::Program(program) => {
+                    Ok(self.evaluate_program(program)?)
+                },
                 Expression::BinaryOperation(_, _, _) => {
                     self.evaluate_expression(node_content)?;
+                    Ok(ControlFlow::Continue)
                 }
                 Expression::Statement(_)
                 | Expression::Declaration(_, _)
-                | Expression::MethodCall(_) => self.evaluate_statement(node_content)?,
+                | Expression::MethodCall(_) => Ok(self.evaluate_statement(node_content)?),
                 Expression::IfConditional(expression, if_block, else_block) => {
-                    self.evaluate_conditional(expression, if_block, else_block)?
+                    self.evaluate_conditional(expression, if_block, else_block)?;
+                    Ok(ControlFlow::Continue)
                 }
-                Expression::Return(_) => self.evaluate_return(node_content)?,
+                Expression::Return(_) => {
+                    self.evaluate_return(node_content)?;
+                    
+                    return Ok(ControlFlow::Break);
+                },
                 Expression::FunctionDeclaration(function_declaration) => {
-                    self.evaluate_function_definition(function_declaration)?
+                    self.evaluate_function_definition(function_declaration)?;
+                    Ok(ControlFlow::Continue)
                 }
                 _ => panic!("Unexpected AST node"),
             }
         }
-        Ok(())
+        else {
+            // When the program is finished the flow breaks.
+            Ok(ControlFlow::Break)
+        }
     }
 
-    fn evaluate_program(&mut self, program: &Program) -> Result<(), RuntimeError> {
+    fn evaluate_program(&mut self, program: &Program) -> Result<ControlFlow, RuntimeError> {
         let statements = &program.body;
         self.evaluate_block(statements)
     }
@@ -63,27 +79,39 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate_block(&mut self, block: &Block) -> Result<(), RuntimeError> {
+    fn evaluate_block(&mut self, block: &Block) -> Result<ControlFlow, RuntimeError> {
         let (parent_scope, _) = self.execution_context.enter_new_scope();
+        let mut break_invoked = false;
         for statement in block {
-            self.evaluate(Some(statement))?;
+            let statement = self.evaluate(Some(statement))?;
+            match statement {
+                ControlFlow::Break => {
+                    break_invoked = true;
+                    break;
+                },
+                ControlFlow::Continue => ()
+            }
         }
         self.execution_context.restore_scope(parent_scope);
-        Ok(())
+        Ok(if break_invoked { ControlFlow::Break } else { ControlFlow::Continue })
     }
 
-    fn evaluate_statement(&mut self, expression: &Expression) -> Result<(), RuntimeError> {
+    fn evaluate_statement(&mut self, expression: &Expression) -> Result<ControlFlow, RuntimeError> {
         match expression {
-            Expression::Statement(expr) => self.evaluate(Some(expr.as_ref()))?,
+            Expression::Statement(expr) => {
+                let eval = self.evaluate(Some(expr.as_ref()))?;
+                Ok(eval)
+            }
             Expression::Declaration(identifier, expr) => {
-                self.evaluate_assignment(identifier, expr)?
+                self.evaluate_assignment(identifier, expr)?;
+                Ok(ControlFlow::Continue)
             }
             Expression::MethodCall(method_call) => {
-                self.evaluate_method_call(method_call)?;
+                self.evaluate_function_call(method_call)?;
+                Ok(ControlFlow::Continue)
             }
             _ => return Err(self.error_with_stack("Unexpected AST node")),
         }
-        Ok(())
     }
 
     fn evaluate_conditional(
@@ -121,7 +149,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate_method_call(&mut self, node: &MethodCall) -> Result<Rc<Value>, RuntimeError> {
+    fn evaluate_function_call(&mut self, node: &MethodCall) -> Result<Rc<Value>, RuntimeError> {
         let method_name = &node.identifier.name;
         if let Some(function) = self.execution_context.lookup_function_in_scope(method_name) {
             let FunctionDeclaration {
@@ -196,7 +224,7 @@ impl Interpreter {
                 Literal::Float(f) => Value::Float(*f).into_rc(),
                 Literal::String(s) => Value::String(s.clone()).into_rc(), // Cheap Rc clone
             }),
-            Expression::MethodCall(method_call) => self.evaluate_method_call(method_call),
+            Expression::MethodCall(method_call) => self.evaluate_function_call(method_call),
             Expression::UnaryOperation(operator, expr) => {
                 let val = self.evaluate_expression(expr)?;
                 match operator {

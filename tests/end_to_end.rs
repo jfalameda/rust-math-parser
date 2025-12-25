@@ -2,11 +2,11 @@ mod harness;
 
 use harness::{reset_assertions, take_assertions, AssertionRecord};
 use parser::{
-    interpreter::{runtime_errors::RuntimeError, Interpreter},
+    interpreter::{ControlFlow, Interpreter, runtime_errors::RuntimeError},
     lexer, parser as ast_parser,
 };
 
-fn run_source(source: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) {
+fn run_source(source: &str) -> (Result<ControlFlow, RuntimeError>, Vec<AssertionRecord>) {
     reset_assertions();
 
     let mut token_parser = lexer::TokenParser::new(source.to_string());
@@ -23,7 +23,7 @@ fn run_source(source: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) 
 }
 
 #[allow(dead_code)]
-fn run_script(path: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) {
+fn run_script(path: &str) -> (Result<ControlFlow, RuntimeError>, Vec<AssertionRecord>) {
     let source = std::fs::read_to_string(path).expect("script should be readable");
     run_source(&source)
 }
@@ -246,10 +246,16 @@ mod tests {
             return value;
         }
 
+        func return_breaks_flow() {
+            return true;
+            assert("Statement after return not executed", false);
+        }
+
         let doubled = double(21);
         let high_sum = conditional_sum(6, 7);
         let low_sum = conditional_sum(2, 3);
         let shadowed = uses_shadowing(4);
+        return_breaks_flow();
         assert("double returns value", doubled == 42);
         assert("conditional sum returns branch result", high_sum == 13);
         assert("conditional sum returns else result", low_sum == 15);

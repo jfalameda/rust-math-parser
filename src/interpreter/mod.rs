@@ -1,5 +1,6 @@
 mod core;
 pub use core::Interpreter;
+pub use core::ControlFlow;
 pub mod call_stack;
 pub mod execution_context;
 pub mod methods;
