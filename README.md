@@ -27,7 +27,7 @@ if (value) {
     // Scope variable
     let value = "Scope value";
 
-    // Print variable a
+    // Print variable ax
     println("Result main: ", main_expr);
 
     // Concatenation using + symbol
@@ -97,6 +97,7 @@ println("Multiplication: " + multiply(1, 2));
 - Implement mechanism on the interpreter to check for mandatory function arguments (consider semantic analysis)
 - Make functions first class citizens
 - Check for undefined variables (also semantic analysis)
+- Return should interrupt the function block execution
 - Implement assignment without declaration
 - Improve syntax errors
 - Value should return results and produce runtime errors.
