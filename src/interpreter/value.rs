@@ -55,6 +55,14 @@ impl Value {
             }
         }
     }
+    /// Force convert to integer
+    pub fn to_i64(&self) -> i64 {
+        match self.to_number() {
+            Value::Integer(i) => i,
+            Value::Float(f) => f as i64,
+            other => error(format!("Expected numeric value, got {:?}", other).as_str()),
+        }
+    }
 
     /// Force-convert to Float (used when float math is required).
     pub fn to_f64(&self) -> f64 {
