@@ -190,7 +190,7 @@ impl Interpreter {
             let return_value = self
                 .execution_context
                 .exit_function_with_return()
-                .unwrap_or(Value::Integer(0));
+                .unwrap_or(Value::Empty);
 
             self.execution_context.pop_frame();
             self.execution_context.restore_scope(parent_scope);
