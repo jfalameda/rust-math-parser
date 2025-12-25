@@ -203,9 +203,11 @@ impl Interpreter {
             let args = self.evaluate_arguments(&node.arguments)?;
             let result = get_method(method_name.clone(), args);
 
+            let result = result.map_err(|err| self.execution_context.attach_stack(err));
+
             self.execution_context.pop_frame();
             
-            result.map_err(|err| self.execution_context.attach_stack(err))
+            result
         }
     }
 
