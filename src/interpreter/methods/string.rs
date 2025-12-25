@@ -1,5 +1,4 @@
 use crate::{
-    error::error,
     interpreter::{methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::Value},
     register_method, takes_arguments,
 };
