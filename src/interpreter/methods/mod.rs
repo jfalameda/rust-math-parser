@@ -17,8 +17,8 @@ pub struct Method {
 
 inventory::collect!(Method);
 
-type NativeFnArgs = Vec<Rc<Value>>;
-type NativeFnReturn = Rc<Value>;
+pub type NativeFnArgs = Vec<Rc<Value>>;
+pub type NativeFnReturn = Rc<Value>;
 
 pub fn get_method(name: String, args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     for method in inventory::iter::<Method> {

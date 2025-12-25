@@ -1,11 +1,9 @@
-use std::rc::Rc;
-
 use crate::{
-    interpreter::{runtime_errors::RuntimeError, value::Value},
+    interpreter::{methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::Value},
     register_method,
 };
 
-pub fn fn_print(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
+pub fn fn_print(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     for arg in args.iter() {
         // Keep Value alive
         let val_str = arg.to_string(); // Value::String(Rc<str>)
@@ -17,7 +15,7 @@ pub fn fn_print(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
         }
     }
 
-    Ok(Rc::new(Value::Empty))
+    Ok(Value::Empty.into_rc())
 }
 
 register_method!("print", fn_print);

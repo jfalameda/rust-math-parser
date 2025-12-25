@@ -4,11 +4,11 @@ use std::{
 };
 
 use crate::{
-    interpreter::{runtime_errors::RuntimeError, value::Value},
+    interpreter::{methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::Value},
     register_method,
 };
 
-pub fn fn_readln(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
+pub fn fn_readln(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     // Print all arguments without converting to String::convert
     for arg in args.iter() {
         let val_str = arg.to_string(); // returns Value::String(Rc<str>)
@@ -37,7 +37,7 @@ pub fn fn_readln(args: Vec<Rc<Value>>) -> Result<Rc<Value>, RuntimeError> {
     }
 
     // Return as Value::String(Rc<str>)
-    Ok(Rc::new(Value::String(Rc::from(line))))
+    Ok(Value::String(Rc::from(line)).into_rc())
 }
 
 register_method!("readln", fn_readln);

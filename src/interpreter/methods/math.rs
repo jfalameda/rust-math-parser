@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     interpreter::{
         methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::{Convert, Value}
@@ -12,7 +10,7 @@ pub fn fn_sin(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
 
     let number = f64::convert(angle.to_number()).unwrap();
     
-    Ok(Rc::new(Value::Float(f64::sin(number))))
+    Ok(Value::Float(f64::sin(number)).into_rc())
 }
 
 pub fn fn_cos(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
@@ -22,7 +20,7 @@ pub fn fn_cos(args: NativeFnArgs) -> Result<NativeFnReturn, RuntimeError> {
     // TODO: Implement proper runtime error handing
     let number = angle.to_f64();
 
-    Ok(Rc::new(Value::Float(number.cos())))
+    Ok(Value::Float(number.cos()).into_rc())
 }
 
 register_method!("sin", fn_sin);

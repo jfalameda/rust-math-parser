@@ -145,7 +145,7 @@ impl Interpreter {
             // Function arguments are not passed at reference. cloning values.
             for (param, value) in param_names.into_iter().zip(evaluated_args.into_iter()) {
                 self.execution_context
-                    .define_variable_in_scope(&param.name, Rc::new(value.as_ref().clone()))?;
+                    .define_variable_in_scope(&param.name, value.as_ref().clone().into_rc())?;
             }
 
             self.execution_context
@@ -162,7 +162,7 @@ impl Interpreter {
             self.execution_context.pop_frame();
             self.execution_context.restore_scope(parent_scope);
 
-            Ok(Rc::new(return_value))
+            Ok(return_value.into_rc())
         } else {
             let args = self.evaluate_arguments(&node.arguments)?;
             let result = get_method(method_name.clone(), args);
@@ -191,21 +191,21 @@ impl Interpreter {
                 })
             }
             Expression::Literal(literal) => Ok(match literal {
-                Literal::Boolean(b) => Rc::new(Value::Boolean(*b)),
-                Literal::Integer(i) => Rc::new(Value::Integer(*i)),
-                Literal::Float(f) => Rc::new(Value::Float(*f)),
-                Literal::String(s) => Rc::new(Value::String(s.clone())), // Cheap Rc clone
+                Literal::Boolean(b) => Value::Boolean(*b).into_rc(),
+                Literal::Integer(i) => Value::Integer(*i).into_rc(),
+                Literal::Float(f) => Value::Float(*f).into_rc(),
+                Literal::String(s) => Value::String(s.clone()).into_rc(), // Cheap Rc clone
             }),
             Expression::MethodCall(method_call) => self.evaluate_method_call(method_call),
             Expression::UnaryOperation(operator, expr) => {
                 let val = self.evaluate_expression(expr)?;
                 match operator {
                     OperatorType::Unary(UnaryOperatorSubtype::Min) => {
-                        Ok(Rc::new(Value::Float(-1.0).mul_value(val.as_ref())))
+                        Ok(Value::Float(-1.0).mul_value(val.as_ref()).into_rc())
                     }
                     OperatorType::Unary(UnaryOperatorSubtype::Not) => {
                         let bool_value = val.to_bool();
-                        Ok(Rc::new(Value::Boolean(!bool_value)))
+                        Ok(Value::Boolean(!bool_value).into_rc())
                     }
                     _ => unreachable!(),
                 }
@@ -216,18 +216,18 @@ impl Interpreter {
                 // Evaluate lazily
                 if let OperatorType::Boolean(BooleanOperatorSubtype::And) = op {
                     if !left_val.to_bool() {
-                        return Ok(Rc::new(Value::Boolean(false)));
+                        return Ok(Value::Boolean(false).into_rc());
                     }
                     let right_val = self.evaluate_expression(right)?;
-                    return Ok(Rc::new(left_val.and_value(&right_val)));
+                    return Ok(left_val.and_value(&right_val).into_rc());
                 }
 
                 if let OperatorType::Boolean(BooleanOperatorSubtype::Or) = op {
                     if left_val.to_bool() {
-                        return Ok(Rc::new(Value::Boolean(true)));
+                        return Ok(Value::Boolean(true).into_rc());
                     }
                     let right_val = self.evaluate_expression(right)?;
-                    return Ok(Rc::new(left_val.or_value(&right_val)));
+                    return Ok(left_val.or_value(&right_val).into_rc());
                 }
 
                 let right_val = self.evaluate_expression(right)?;
@@ -259,7 +259,7 @@ impl Interpreter {
                         return Err(self.error_with_stack("Unary operation unexpected"));
                     }
                 };
-                Ok(Rc::new(res))
+                Ok(res.into_rc())
             }
             _ => Err(self.error_with_stack(&format!("Unrecognized node {:?}", node))),
         }
