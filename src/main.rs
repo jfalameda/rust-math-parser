@@ -44,7 +44,7 @@ fn main() {
 
     // Interpreting
     let mut interpreter = Interpreter::new();
-    if let Err(err) = interpreter.evaluate(Some(ast.as_ref())) {
+    if let Err(err) = interpreter.run(Some(ast.as_ref())) {
         eprintln!("\nProgram exited \n {}", err);
         std::process::exit(1);
     }

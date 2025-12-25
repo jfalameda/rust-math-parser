@@ -25,6 +25,11 @@ impl Interpreter {
         }
     }
 
+    pub fn run(&mut self, node: Option<&Expression>) -> Result<(), RuntimeError> {
+        self.evaluate(node)?;
+        Ok(())
+    }
+
     pub fn evaluate(&mut self, node: Option<&Expression>) -> Result<ControlFlow, RuntimeError> {
         if let Some(node_content) = node {
             match node_content {

@@ -6,7 +6,7 @@ use parser::{
     lexer, parser as ast_parser,
 };
 
-fn run_source(source: &str) -> (Result<ControlFlow, RuntimeError>, Vec<AssertionRecord>) {
+fn run_source(source: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) {
     reset_assertions();
 
     let mut token_parser = lexer::TokenParser::new(source.to_string());
@@ -16,14 +16,14 @@ fn run_source(source: &str) -> (Result<ControlFlow, RuntimeError>, Vec<Assertion
     let ast = parser.parse().expect("parser should succeed");
 
     let mut interpreter = Interpreter::new();
-    let result = interpreter.evaluate(Some(ast.as_ref()));
+    let result = interpreter.run(Some(ast.as_ref()));
     let assertions = take_assertions();
 
     (result, assertions)
 }
 
 #[allow(dead_code)]
-fn run_script(path: &str) -> (Result<ControlFlow, RuntimeError>, Vec<AssertionRecord>) {
+fn run_script(path: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) {
     let source = std::fs::read_to_string(path).expect("script should be readable");
     run_source(&source)
 }
