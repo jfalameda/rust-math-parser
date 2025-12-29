@@ -9,7 +9,7 @@ use parser::{
 fn run_source(source: &str) -> (Result<(), RuntimeError>, Vec<AssertionRecord>) {
     reset_assertions();
 
-    let mut token_parser = lexer::TokenParser::new(source.to_string());
+    let mut token_parser = lexer::TokenParser::new(source);
     let tokens = token_parser.parse().expect("lexer should succeed");
 
     let mut parser = ast_parser::Parser::new(tokens);

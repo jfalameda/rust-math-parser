@@ -101,16 +101,16 @@ pub enum OperatorType {
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct Token {
+pub struct Token<'a> {
     pub start: usize,
     pub end: usize,
     pub line: usize,
     pub token_type: TokenType,
     pub operator_type: Option<OperatorType>,
-    pub value: Option<String>,
+    pub value: Option<&'a str>,
 }
 
-impl Token {
+impl<'a> Token<'a> {
     pub fn operator_predecende(self) -> (i32, bool) {
         match self.operator_type {
             Some(OperatorType::Additive(_)) => (1, false),
@@ -124,15 +124,15 @@ impl Token {
     }
 }
 
-pub struct TokenParser {
+pub struct TokenParser<'a> {
     pos: usize, // byte offset
     column: usize,
     line: usize,
-    program: String,
+    program: &'a str,
 }
 
-impl TokenParser {
-    pub fn new(program: String) -> Self {
+impl<'a> TokenParser<'a> {
+    pub fn new(program: &'a str) -> Self {
         Self {
             pos: 0,
             column: 1,
@@ -163,15 +163,15 @@ impl TokenParser {
         c
     }
 
-    fn slice_to_string(&self, start: usize) -> String {
-        self.program[start..self.pos].to_string()
+    fn slice(&self, start: usize) -> &'a str {
+        &self.program[start..self.pos]
     }
 
-    fn slice_range_to_string(&self, start: usize, end: usize) -> String {
-        self.program[start..end].to_string()
+    fn slice_range(&self, start: usize, end: usize) -> &'a str {
+        &self.program[start..end]
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Token>, LexerInvalidTokenError> {
+    pub fn parse(&mut self) -> Result<Vec<Token<'a>>, LexerInvalidTokenError> {
         let mut tokens = Vec::with_capacity(self.program.len() / 2);
 
         while let Some(c) = self.peek() {
@@ -200,7 +200,7 @@ impl TokenParser {
                         line: self.line,
                         token_type: TokenType::EndOfstatement,
                         operator_type: None,
-                        value: Some(";".to_string()),
+                        value: Some(self.slice(start)),
                     });
                 }
 
@@ -214,7 +214,7 @@ impl TokenParser {
                         line: self.line,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::And)),
-                        value: Some("&&".to_string()),
+                        value: Some(self.slice(start)),
                     });
                 }
 
@@ -228,7 +228,7 @@ impl TokenParser {
                         line: self.line,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::Or)),
-                        value: Some("==".to_string()),
+                        value: Some(self.slice(start)),
                     });
                 }
 
@@ -242,7 +242,7 @@ impl TokenParser {
                         line: self.line,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Neq)),
-                        value: Some("!=".to_string()),
+                        value: Some(self.slice(start)),
                     });
                 }
                 '>' => {
@@ -256,16 +256,16 @@ impl TokenParser {
                             line: self.line,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gte)),
-                            value: Some(">=".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     } else {
                         tokens.push(Token {
                             start,
-                            end: start,
+                            end: self.pos,
                             line: self.line,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gt)),
-                            value: Some(">".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     }
                 }
@@ -281,7 +281,7 @@ impl TokenParser {
                             line: self.line,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Lte)),
-                            value: Some("<=".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     } else {
                         tokens.push(Token {
@@ -290,7 +290,7 @@ impl TokenParser {
                             line: self.line,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Lt)),
-                            value: Some("<".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     }
                 }
@@ -306,7 +306,7 @@ impl TokenParser {
                             line: self.line,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Eq)),
-                            value: Some("==".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     } else {
                         tokens.push(Token {
@@ -315,7 +315,7 @@ impl TokenParser {
                             line: self.line,
                             token_type: TokenType::Assignment,
                             operator_type: None,
-                            value: Some("=".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     }
                 }
@@ -329,7 +329,7 @@ impl TokenParser {
                             break;
                         }
                     }
-                    let value = self.slice_range_to_string(start + 1, self.pos - 1);
+                    let value = self.slice_range(start + 1, self.pos - 1);
                     tokens.push(Token {
                         start,
                         end: self.pos,
@@ -344,13 +344,14 @@ impl TokenParser {
                     let start = self.pos;
                     self.digest();
                     while let Some(ch) = self.peek() {
-                        if !ch.is_ascii_alphanumeric() && ch != '_' {
+                        if ch.is_ascii_alphanumeric() || ch == '_' || ch == '.' {
+                            self.digest();
+                        } else {
                             break;
                         }
-                        self.digest();
                     }
 
-                    let text = &self.program[start..self.pos];
+                    let text = self.slice(start);
                     let token_type = match text {
                         "if" => TokenType::ConditionalIf,
                         "else" => TokenType::ConditionalElse,
@@ -367,7 +368,7 @@ impl TokenParser {
                         line: self.line,
                         token_type,
                         operator_type: None,
-                        value: Some(text.to_string()),
+                        value: Some(text),
                     });
                 }
 
@@ -388,7 +389,7 @@ impl TokenParser {
                             '.' => {
                                 return Err(LexerInvalidTokenError {
                                     kind: LexerInvalidTokenKind::MalformedNumberLiteral(
-                                        self.slice_to_string(start),
+                                        self.slice(start).to_string(),
                                     ),
                                     line: self.line,
                                     column: self.column,
@@ -408,7 +409,7 @@ impl TokenParser {
                             NumeralType::Integer
                         }),
                         operator_type: None,
-                        value: Some(self.slice_to_string(start)),
+                        value: Some(self.slice(start)),
                     });
                 }
 
@@ -434,7 +435,7 @@ impl TokenParser {
                         line: self.line,
                         token_type: TokenType::Operator,
                         operator_type,
-                        value: Some(self.slice_to_string(start)),
+                        value: Some(self.slice(start)),
                     });
                 }
 
@@ -447,7 +448,7 @@ impl TokenParser {
                         line: self.line,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Unary(UnaryOperatorSubtype::Not)),
-                        value: Some("!".to_string()),
+                        value: Some(self.slice(start)),
                     });
                 }
 
@@ -462,7 +463,7 @@ impl TokenParser {
                             line: self.line,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::And)),
-                            value: Some("&&".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     } else {
                         return Err(LexerInvalidTokenError {
@@ -484,7 +485,7 @@ impl TokenParser {
                             line: self.line,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::Or)),
-                            value: Some("||".to_string()),
+                            value: Some(self.slice(start)),
                         });
                     } else {
                         return Err(LexerInvalidTokenError {
@@ -513,7 +514,7 @@ impl TokenParser {
                         line: self.line,
                         token_type,
                         operator_type: None,
-                        value: Some(self.slice_to_string(start)),
+                        value: Some(self.slice(start)),
                     });
                 }
 
@@ -546,8 +547,8 @@ mod tests {
 
     use super::*;
 
-    fn parse_program(program: String) -> Result<Vec<Token>, LexerInvalidTokenError> {
-        let mut parser = TokenParser::new(program.to_string());
+    fn parse_program<'a>(program: &'a str) -> Result<Vec<Token<'a>>, LexerInvalidTokenError> {
+        let mut parser = TokenParser::new(program);
         parser.parse()
     }
 
@@ -558,7 +559,7 @@ mod tests {
         ];
 
         for &number in numbers.iter() {
-            let result = parse_program(number.to_string());
+            let result = parse_program(number);
             let token = result?.first().ok_or("List was empty")?.token_type.clone();
             assert!(
                 matches!(token, TokenType::NumeralLiteral(_)),
@@ -572,8 +573,7 @@ mod tests {
 
     #[test]
     fn malformed_numerical_values_should_not_pass() -> Result<(), Box<dyn Error>> {
-        let result: Result<Vec<Token>, LexerInvalidTokenError> =
-            parse_program(String::from("10..1"));
+        let result = parse_program("10..1");
 
         if let Err(LexerInvalidTokenError {
             kind: LexerInvalidTokenKind::MalformedNumberLiteral(ref literal),
@@ -648,7 +648,7 @@ mod tests {
         ];
 
         for (program, expected_tokens) in test_cases.iter() {
-            let tokens = parse_program(program.to_string())?;
+            let tokens = parse_program(program)?;
 
             let actual_token_types: Vec<TokenType> =
                 tokens.iter().map(|t| t.token_type.clone()).collect();

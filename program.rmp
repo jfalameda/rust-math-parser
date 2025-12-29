@@ -98,3 +98,21 @@ func sub(a, b) {
 }
 
 println(sub(1, 2));
+
+
+class ClassExample {
+    let a = 1;
+    let b = 2;
+
+    func constructor() {
+
+    }
+
+    func method1() {
+
+    }
+}
+
+let example = new ClassExample();
+
+example.method1();

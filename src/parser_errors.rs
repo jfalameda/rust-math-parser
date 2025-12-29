@@ -3,23 +3,23 @@ use std::fmt;
 use crate::lexer::Token;
 
 #[derive(Debug, Clone)]
-pub enum ParserErrorKind {
-    UnrecognizedToken(Token),
-    UnexpectedToken(String, Token),
+pub enum ParserErrorKind<'a> {
+    UnrecognizedToken(Token<'a>),
+    UnexpectedToken(String, Token<'a>),
     UnexpectedEOF,
     UnexpectedEmptyValue,
 }
 
 #[derive(Debug, Clone)]
-pub struct ParserError {
-    pub kind: ParserErrorKind,
+pub struct ParserError<'a> {
+    pub kind: ParserErrorKind<'a>,
 }
 
-impl fmt::Display for ParserErrorKind {
+impl fmt::Display for ParserErrorKind<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParserErrorKind::UnrecognizedToken(token) => {
-                let found = token.value.clone().unwrap_or_default();
+                let found = token.value.unwrap_or_default();
                 write!(
                     f,
                     "Syntax error: Unrecognized token {} at line {} and character {}",
@@ -27,7 +27,7 @@ impl fmt::Display for ParserErrorKind {
                 )
             }
             ParserErrorKind::UnexpectedToken(expected, token) => {
-                let found = token.value.clone().unwrap_or_default();
+                let found = token.value.unwrap_or_default();
                 write!(
                     f,
                     "Syntax error: Expected token {} at line {} and character {}, instead found {}",
@@ -44,10 +44,10 @@ impl fmt::Display for ParserErrorKind {
     }
 }
 
-impl fmt::Display for ParserError {
+impl fmt::Display for ParserError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Parsing error: {}", self.kind)
     }
 }
 
-impl std::error::Error for ParserError {}
+impl<'a> std::error::Error for ParserError<'a> {}

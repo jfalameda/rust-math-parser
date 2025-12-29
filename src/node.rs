@@ -112,7 +112,7 @@ pub fn build_function_declaration_node(
 }
 
 pub fn build_node(
-    token: &Token,
+    token: &Token<'_>,
     left: Option<Box<Expression>>,
     right: Option<Box<Expression>>,
 ) -> Box<Expression> {

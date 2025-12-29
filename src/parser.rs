@@ -8,41 +8,42 @@ use crate::node::{
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
-pub struct Parser {
+pub struct Parser<'a> {
     pos: usize,
-    tokens: Vec<lexer::Token>,
+    tokens: Vec<lexer::Token<'a>>,
 }
 
-fn error_unexpected_token(token: &Token, expected_token_type: &TokenType) -> ParserError {
+
+fn error_unexpected_token<'a>(token: &Token<'a>, expected_token_type: &TokenType) -> ParserError<'a> {
     ParserError {
         kind: ParserErrorKind::UnexpectedToken(expected_token_type.to_string(), token.clone()),
     }
 }
 
-fn error_unrecognized_token(token: &Token) -> ParserError {
+fn error_unrecognized_token<'a>(token: &Token<'a>) -> ParserError<'a> {
     ParserError {
         kind: ParserErrorKind::UnrecognizedToken(token.clone()),
     }
 }
 
-fn error_eof() -> ParserError {
+fn error_eof<'a>() -> ParserError<'a> {
     ParserError {
         kind: ParserErrorKind::UnexpectedEOF,
     }
 }
 
-fn error_unexpected_empty_value() -> ParserError {
+fn error_unexpected_empty_value<'a>() -> ParserError<'a> {
     ParserError {
         kind: ParserErrorKind::UnexpectedEmptyValue,
     }
 }
 
-impl Parser {
-    pub fn new(tokens: Vec<lexer::Token>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(tokens: Vec<lexer::Token<'a>>) -> Self {
         Parser { pos: 0, tokens }
     }
 
-    fn peek(&self, pos: Option<usize>) -> Option<&lexer::Token> {
+    fn peek(&self, pos: Option<usize>) -> Option<&lexer::Token<'a>> {
         self.tokens.get(pos.unwrap_or(self.pos))
     }
 
@@ -50,7 +51,7 @@ impl Parser {
         matches!(self.peek(None), Some(t) if t.token_type == expected)
     }
 
-    fn digest(&mut self, expected: TokenType) -> Result<Token, ParserError> {
+    fn digest(&mut self, expected: TokenType) -> Result<Token<'a>, ParserError<'a>> {
         let token = self.peek(None).ok_or_else(error_eof)?.clone();
 
         if token.token_type != expected {
@@ -61,11 +62,11 @@ impl Parser {
         Ok(token)
     }
 
-    pub fn parse(&mut self) -> Result<Box<Expression>, ParserError> {
+    pub fn parse(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         Ok(build_program_node(self.parse_block()?))
     }
 
-    fn consume_statement_terminator(&mut self, stmt: &Expression) -> Result<(), ParserError> {
+    fn consume_statement_terminator(&mut self, stmt: &Expression) -> Result<(), ParserError<'a>> {
         match stmt {
             Expression::IfConditional(_, _, _) | Expression::FunctionDeclaration(_) => Ok(()),
             _ => {
@@ -75,7 +76,7 @@ impl Parser {
         }
     }
 
-    fn parse_function_declaration(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_function_declaration(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::FunctionDeclaration)?;
 
         let identifier = self.digest(TokenType::Symbol)?;
@@ -93,7 +94,8 @@ impl Parser {
             args.push(
                 self.digest(TokenType::Symbol)?
                     .value
-                    .ok_or_else(error_unexpected_empty_value)?,
+                    .ok_or_else(error_unexpected_empty_value)?
+                    .to_string(),
             );
 
             // If next is not ')', expect a comma
@@ -110,12 +112,15 @@ impl Parser {
 
         let block = self.parse_block_with_delimiters()?;
 
-        let identifier = identifier.value.ok_or_else(error_unexpected_empty_value)?;
+        let identifier = identifier
+            .value
+            .ok_or_else(error_unexpected_empty_value)?
+            .to_string();
 
         Ok(build_function_declaration_node(identifier, args, block))
     }
 
-    fn parse_block_with_delimiters(&mut self) -> Result<Block, ParserError> {
+    fn parse_block_with_delimiters(&mut self) -> Result<Block, ParserError<'a>> {
         self.digest(TokenType::BlockStart)?;
         let block = self.parse_block()?;
         self.digest(TokenType::BlockEnd)?;
@@ -123,7 +128,7 @@ impl Parser {
         Ok(block)
     }
 
-    fn parse_block(&mut self) -> Result<Block, ParserError> {
+    fn parse_block(&mut self) -> Result<Block, ParserError<'a>> {
         let mut body = vec![];
 
         while let Some(token) = self.peek(None) {
@@ -144,7 +149,7 @@ impl Parser {
         Ok(body)
     }
 
-    fn parse_statement(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_statement(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         let token = self.peek(None).ok_or_else(error_eof)?;
 
         let statement = match token.token_type {
@@ -162,23 +167,23 @@ impl Parser {
 
         Ok(statement)
     }
-    fn parse_declaration(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_declaration(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::Declaration)?; // consume "let"
         let symbol = self.digest(TokenType::Symbol)?;
         self.digest(TokenType::Assignment)?;
         let expr = self.parse_expression(0)?;
         Ok(build_assignment_node(
-            symbol.value.ok_or_else(error_eof)?,
+            symbol.value.ok_or_else(error_eof)?.to_string(),
             expr,
         ))
     }
 
-    fn parse_return(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_return(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::Return)?;
         Ok(build_return_node(self.parse_expression(0)?))
     }
 
-    fn parse_conditional(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_conditional(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::ConditionalIf)?;
         self.digest(TokenType::ParenthesisL)?;
         let expr = self.parse_expression(0)?;
@@ -196,7 +201,7 @@ impl Parser {
         Ok(build_conditional_node(expr, if_block, else_block))
     }
 
-    fn parse_statement_or_block(&mut self) -> Result<Block, ParserError> {
+    fn parse_statement_or_block(&mut self) -> Result<Block, ParserError<'a>> {
         // If can be followed either by a block or by a simple statement
         if self.peek_type_is(TokenType::BlockStart) {
             let if_block = self.parse_block_with_delimiters()?;
@@ -209,7 +214,7 @@ impl Parser {
         }
     }
 
-    fn parse_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError> {
+    fn parse_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError<'a>> {
         let token = self.peek(None).ok_or_else(error_eof)?;
         let next = self.peek(Some(self.pos + 1));
 
@@ -225,20 +230,20 @@ impl Parser {
         }
     }
 
-    fn parse_function_call(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_function_call(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         let method_name = self.digest(TokenType::Symbol)?;
         self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
         Ok(build_function_call_node(
-            method_name.value.ok_or_else(error_eof)?,
+            method_name.value.ok_or_else(error_eof)?.to_string(),
             args,
             method_name.line,
         ))
     }
 
-    fn parse_method_args(&mut self) -> Result<Vec<Expression>, ParserError> {
+    fn parse_method_args(&mut self) -> Result<Vec<Expression>, ParserError<'a>> {
         let mut args = vec![];
 
         while let Some(token) = self.peek(None) {
@@ -261,7 +266,7 @@ impl Parser {
         Ok(args)
     }
 
-    fn parse_binary_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError> {
+    fn parse_binary_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError<'a>> {
         let mut left = self.parse_term()?;
 
         loop {
@@ -291,7 +296,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_term(&mut self) -> Result<Box<Expression>, ParserError> {
+    fn parse_term(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         let token = self.peek(None).ok_or_else(error_eof)?.clone();
 
         match token.token_type {

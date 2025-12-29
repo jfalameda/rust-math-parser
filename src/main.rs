@@ -23,7 +23,7 @@ fn main() {
     };
 
     // Lexical analysis
-    let mut token_parser = lexer::TokenParser::new(program);
+    let mut token_parser = lexer::TokenParser::new(&program);
     let tokens = match token_parser.parse() {
         Ok(t) => t,
         Err(err) => {
