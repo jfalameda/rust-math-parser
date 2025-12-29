@@ -109,6 +109,7 @@ pub struct Token<'a> {
     pub start: usize,
     pub end: usize,
     pub line: usize,
+    pub column: usize,
     pub token_type: TokenType,
     pub operator_type: Option<OperatorType>,
     pub value: Option<&'a str>,
@@ -197,11 +198,13 @@ impl<'a> TokenParser<'a> {
 
                 ';' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     tokens.push(Token {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::EndOfstatement,
                         operator_type: None,
                         value: Some(self.slice(start)),
@@ -210,12 +213,14 @@ impl<'a> TokenParser<'a> {
 
                 '&' if self.peek_with_offset(1) == Some('&') => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     self.digest();
                     tokens.push(Token {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::And)),
                         value: Some(self.slice(start)),
@@ -224,12 +229,14 @@ impl<'a> TokenParser<'a> {
 
                 '|' if self.peek_with_offset(1) == Some('|') => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     self.digest();
                     tokens.push(Token {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::Or)),
                         value: Some(self.slice(start)),
@@ -238,12 +245,14 @@ impl<'a> TokenParser<'a> {
 
                 '!' if self.peek_with_offset(1) == Some('=') => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     self.digest();
                     tokens.push(Token {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Neq)),
                         value: Some(self.slice(start)),
@@ -251,6 +260,7 @@ impl<'a> TokenParser<'a> {
                 }
                 '>' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     if self.peek() == Some('=') {
                         self.digest();
@@ -258,6 +268,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gte)),
                             value: Some(self.slice(start)),
@@ -267,6 +278,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Gt)),
                             value: Some(self.slice(start)),
@@ -276,6 +288,7 @@ impl<'a> TokenParser<'a> {
 
                 '<' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     if self.peek() == Some('=') {
                         self.digest();
@@ -283,6 +296,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Lte)),
                             value: Some(self.slice(start)),
@@ -292,6 +306,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Lt)),
                             value: Some(self.slice(start)),
@@ -301,6 +316,7 @@ impl<'a> TokenParser<'a> {
 
                 '=' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     if self.peek() == Some('=') {
                         self.digest();
@@ -308,6 +324,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Comp(CompOperatorSubtype::Eq)),
                             value: Some(self.slice(start)),
@@ -317,6 +334,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Assignment,
                             operator_type: None,
                             value: Some(self.slice(start)),
@@ -326,6 +344,7 @@ impl<'a> TokenParser<'a> {
 
                 '"' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     while let Some(ch) = self.peek() {
                         self.digest();
@@ -338,6 +357,7 @@ impl<'a> TokenParser<'a> {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::StringLiteral,
                         operator_type: None,
                         value: Some(value),
@@ -346,11 +366,13 @@ impl<'a> TokenParser<'a> {
 
                 '.' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     tokens.push(Token {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::MemberAccess,
                         operator_type: None,
                         value: Some("."),
@@ -359,6 +381,7 @@ impl<'a> TokenParser<'a> {
 
                 'a'..='z' | 'A'..='Z' | '_' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     while let Some(ch) = self.peek() {
                         if ch.is_ascii_alphanumeric() || ch == '_' {
@@ -386,6 +409,7 @@ impl<'a> TokenParser<'a> {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type,
                         operator_type: None,
                         value: Some(text),
@@ -394,6 +418,7 @@ impl<'a> TokenParser<'a> {
 
                 '0'..='9' => {
                     let start = self.pos;
+                    let column = self.column;
                     let mut is_float = false;
                     self.digest();
 
@@ -423,6 +448,7 @@ impl<'a> TokenParser<'a> {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::NumeralLiteral(if is_float {
                             NumeralType::Float
                         } else {
@@ -435,6 +461,7 @@ impl<'a> TokenParser<'a> {
 
                 '+' | '-' | '*' | '/' | '^' => {
                     let start = self.pos;
+                    let column = self.column;
                     let op = self.digest();
                     let operator_type = match op {
                         '+' => Some(OperatorType::Additive(AdditiveOperatorSubtype::Add)),
@@ -453,6 +480,7 @@ impl<'a> TokenParser<'a> {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::Operator,
                         operator_type,
                         value: Some(self.slice(start)),
@@ -461,11 +489,13 @@ impl<'a> TokenParser<'a> {
 
                 '!' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     tokens.push(Token {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type: TokenType::Operator,
                         operator_type: Some(OperatorType::Unary(UnaryOperatorSubtype::Not)),
                         value: Some(self.slice(start)),
@@ -474,6 +504,7 @@ impl<'a> TokenParser<'a> {
 
                 '&' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     if self.peek() == Some('&') {
                         self.digest();
@@ -481,6 +512,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::And)),
                             value: Some(self.slice(start)),
@@ -496,6 +528,7 @@ impl<'a> TokenParser<'a> {
 
                 '|' => {
                     let start = self.pos;
+                    let column = self.column;
                     self.digest();
                     if self.peek() == Some('|') {
                         self.digest();
@@ -503,6 +536,7 @@ impl<'a> TokenParser<'a> {
                             start,
                             end: self.pos,
                             line: self.line,
+                            column,
                             token_type: TokenType::Operator,
                             operator_type: Some(OperatorType::Boolean(BooleanOperatorSubtype::Or)),
                             value: Some(self.slice(start)),
@@ -518,6 +552,7 @@ impl<'a> TokenParser<'a> {
 
                 '(' | ')' | '{' | '}' | ',' => {
                     let start = self.pos;
+                    let column = self.column;
                     let ch = self.digest();
                     let token_type = match ch {
                         '(' => TokenType::ParenthesisL,
@@ -532,6 +567,7 @@ impl<'a> TokenParser<'a> {
                         start,
                         end: self.pos,
                         line: self.line,
+                        column,
                         token_type,
                         operator_type: None,
                         value: Some(self.slice(start)),
@@ -552,6 +588,7 @@ impl<'a> TokenParser<'a> {
             start: self.pos,
             end: self.pos,
             line: self.line,
+            column: self.column,
             token_type: TokenType::Eof,
             operator_type: None,
             value: None,

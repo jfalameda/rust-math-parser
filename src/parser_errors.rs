@@ -22,16 +22,16 @@ impl fmt::Display for ParserErrorKind<'_> {
                 let found = token.value.unwrap_or_default();
                 write!(
                     f,
-                    "Syntax error: Unrecognized token {} at line {} and character {}",
-                    found, token.line, token.start
+                    "Syntax error: Unrecognized token {} at line {} and column {}",
+                    found, token.line, token.column
                 )
             }
             ParserErrorKind::UnexpectedToken(expected, token) => {
                 let found = token.value.unwrap_or_default();
                 write!(
                     f,
-                    "Syntax error: Expected token {} at line {} and character {}, instead found {}",
-                    expected, token.line, token.start, found
+                    "Syntax error: Expected token {} at line {} and column {}, instead found {}",
+                    expected, token.line, token.column, found
                 )
             }
             ParserErrorKind::UnexpectedEOF => {
