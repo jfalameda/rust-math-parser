@@ -1,4 +1,4 @@
-use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
+use crate::{lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind}};
 
 use std::fmt;
 
@@ -27,6 +27,7 @@ pub enum TokenType {
     BlockStart,
     BlockEnd,
     Return,
+    MemberAccess,
     Eof,
 }
 
@@ -50,6 +51,7 @@ impl fmt::Display for TokenType {
             TokenType::BlockStart => "BlockStart",
             TokenType::BlockEnd => "BlockEnd",
             TokenType::Return => "Return",
+            TokenType::MemberAccess => "MemberAccesss",
             TokenType::Eof => "Eof",
         };
         f.write_str(text)
@@ -340,11 +342,24 @@ impl<'a> TokenParser<'a> {
                     });
                 }
 
+                '.' => {
+                    let start = self.pos;
+                    self.digest();
+                    tokens.push(Token {
+                        start,
+                        end: self.pos,
+                        line: self.line,
+                        token_type: TokenType::MemberAccess,
+                        operator_type: None,
+                        value: Some("."),
+                    });
+                }
+
                 'a'..='z' | 'A'..='Z' | '_' => {
                     let start = self.pos;
                     self.digest();
                     while let Some(ch) = self.peek() {
-                        if ch.is_ascii_alphanumeric() || ch == '_' || ch == '.' {
+                        if ch.is_ascii_alphanumeric() || ch == '_' {
                             self.digest();
                         } else {
                             break;
@@ -627,6 +642,15 @@ mod tests {
                     TokenType::BlockStart,
                     TokenType::NumeralLiteral(NumeralType::Integer),
                     TokenType::BlockEnd,
+                    TokenType::Eof,
+                ],
+            ),
+            (
+                "variable.variable",
+                vec![
+                    TokenType::Symbol,
+                    TokenType::MemberAccess,
+                    TokenType::Symbol,
                     TokenType::Eof,
                 ],
             ),
