@@ -28,6 +28,13 @@ pub struct FunctionCall {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct ClassInstantiation {
+    pub identifier: Identifier,
+    pub arguments: Vec<Expression>,
+    pub location: usize,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionDeclaration {
     pub identifier: Identifier,
     pub arguments: Vec<Identifier>,
@@ -51,6 +58,7 @@ pub enum Expression {
     Program(Program), // Change to block?
     Statement(Box<Expression>),
     FunctionCall(FunctionCall),
+    ClassInstantiation(ClassInstantiation),
     Identifier(Identifier),
     Declaration(Identifier, Box<Expression>),
     Block(Block),
@@ -61,6 +69,18 @@ pub enum Expression {
 }
 
 pub fn build_function_call_node(
+    method_name: String,
+    args: Vec<Expression>,
+    location: usize,
+) -> Box<Expression> {
+    Box::new(Expression::FunctionCall(FunctionCall {
+        identifier: Identifier { name: method_name },
+        arguments: args,
+        location,
+    }))
+}
+
+pub fn build_class_instantiation_node(
     method_name: String,
     args: Vec<Expression>,
     location: usize,

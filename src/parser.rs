@@ -2,7 +2,7 @@ use crate::lexer::{
     self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype,
 };
 use crate::node::{
-    Block, Expression, build_assignment_node, build_class_declaration_node, build_conditional_node, build_function_call_node, build_function_declaration_node, build_node, build_program_node, build_return_node, build_statement_node, build_unary_node
+    Block, Expression, build_assignment_node, build_class_declaration_node, build_class_instantiation_node, build_conditional_node, build_function_call_node, build_function_declaration_node, build_node, build_program_node, build_return_node, build_statement_node, build_unary_node
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -250,7 +250,10 @@ impl<'a> Parser<'a> {
         let token = self.peek(None).ok_or_else(error_eof)?;
         let next = self.peek(Some(self.pos + 1));
 
-        if token.token_type == TokenType::Symbol
+        if token.token_type == TokenType::New {
+            self.parse_class_instantiation()
+        }
+        else if token.token_type == TokenType::Symbol
             && matches!(
                 next.map(|t| t.token_type.clone()),
                 Some(TokenType::ParenthesisL)
@@ -260,6 +263,20 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_binary_expression(precedence)
         }
+    }
+
+    fn parse_class_instantiation(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
+        self.digest(TokenType::New)?;
+        let class_name = self.digest(TokenType::Symbol)?;
+        self.digest(TokenType::ParenthesisL)?;
+        let args = self.parse_method_args()?;
+        self.digest(TokenType::ParenthesisR)?;
+        
+        Ok(build_class_instantiation_node(
+            class_name.value.ok_or_else(error_eof)?.to_string(),
+            args,
+            class_name.line)
+        )
     }
 
     fn parse_function_call(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
