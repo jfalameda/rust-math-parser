@@ -28,6 +28,7 @@ pub enum TokenType {
     BlockEnd,
     Return,
     MemberAccess,
+    Class,
     Eof,
 }
 
@@ -52,6 +53,7 @@ impl fmt::Display for TokenType {
             TokenType::BlockEnd => "BlockEnd",
             TokenType::Return => "Return",
             TokenType::MemberAccess => "MemberAccesss",
+            TokenType::Class => "Class",
             TokenType::Eof => "Eof",
         };
         f.write_str(text)
@@ -367,6 +369,8 @@ impl<'a> TokenParser<'a> {
                     }
 
                     let text = self.slice(start);
+
+                    // Reserved words
                     let token_type = match text {
                         "if" => TokenType::ConditionalIf,
                         "else" => TokenType::ConditionalElse,
@@ -374,6 +378,7 @@ impl<'a> TokenParser<'a> {
                         "let" => TokenType::Declaration,
                         "true" | "false" => TokenType::BooleanLiteral,
                         "return" => TokenType::Return,
+                        "class" => TokenType::Class,
                         _ => TokenType::Symbol,
                     };
 
@@ -665,6 +670,25 @@ mod tests {
                     TokenType::ParenthesisR,
                     TokenType::BlockStart,
                     TokenType::NumeralLiteral(NumeralType::Integer),
+                    TokenType::BlockEnd,
+                    TokenType::Eof,
+                ],
+            ),
+            (
+                "class A {
+                    func constructor() {
+                    }
+                }",
+                vec![
+                    TokenType::Class,
+                    TokenType::Symbol,
+                    TokenType::BlockStart,
+                    TokenType::FunctionDeclaration,
+                    TokenType::Symbol,
+                    TokenType::ParenthesisL,
+                    TokenType::ParenthesisR,
+                    TokenType::BlockStart,
+                    TokenType::BlockEnd,
                     TokenType::BlockEnd,
                     TokenType::Eof,
                 ],
