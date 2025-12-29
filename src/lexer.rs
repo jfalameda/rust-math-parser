@@ -28,7 +28,8 @@ pub enum TokenType {
     BlockEnd,
     Return,
     MemberAccess,
-    Class,
+    ClassDeclaration,
+    New,
     Eof,
 }
 
@@ -53,7 +54,8 @@ impl fmt::Display for TokenType {
             TokenType::BlockEnd => "BlockEnd",
             TokenType::Return => "Return",
             TokenType::MemberAccess => "MemberAccesss",
-            TokenType::Class => "Class",
+            TokenType::ClassDeclaration => "ClassDeclaration",
+            TokenType::New => "New",
             TokenType::Eof => "Eof",
         };
         f.write_str(text)
@@ -401,7 +403,8 @@ impl<'a> TokenParser<'a> {
                         "let" => TokenType::Declaration,
                         "true" | "false" => TokenType::BooleanLiteral,
                         "return" => TokenType::Return,
-                        "class" => TokenType::Class,
+                        "class" => TokenType::ClassDeclaration,
+                        "new" => TokenType::New,
                         _ => TokenType::Symbol,
                     };
 
@@ -717,7 +720,7 @@ mod tests {
                     }
                 }",
                 vec![
-                    TokenType::Class,
+                    TokenType::ClassDeclaration,
                     TokenType::Symbol,
                     TokenType::BlockStart,
                     TokenType::FunctionDeclaration,

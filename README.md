@@ -107,3 +107,4 @@ println("Multiplication: " + multiply(1, 2));
 - Built-in functions should be able to throw errors
 - Implement reserved words
 - Implement objects
+- Allow for empty values when declaring using let.

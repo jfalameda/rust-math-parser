@@ -34,6 +34,13 @@ pub struct FunctionDeclaration {
     pub block: Block,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct ClassDeclaration {
+    pub identifier: Identifier,
+    pub members: Vec<Box<Expression>>,
+    pub methods: Vec<Box<Expression>>,
+}
+
 pub type Block = Vec<Expression>;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -50,6 +57,7 @@ pub enum Expression {
     FunctionDeclaration(FunctionDeclaration),
     Return(Box<Expression>),
     IfConditional(Box<Expression>, Block, Option<Block>),
+    ClassDeclaration(ClassDeclaration)
 }
 
 pub fn build_function_call_node(
@@ -108,6 +116,18 @@ pub fn build_function_declaration_node(
             .map(|arg| Identifier { name: arg.clone() })
             .collect(),
         block,
+    }))
+}
+
+pub fn build_class_declaration_node(
+    identifier: String,
+    members: Vec<Box<Expression>>,
+    methods: Vec<Box<Expression>>,
+) -> Box<Expression> {
+    Box::new(Expression::ClassDeclaration(ClassDeclaration {
+        identifier: Identifier { name: identifier },
+        members,
+        methods
     }))
 }
 

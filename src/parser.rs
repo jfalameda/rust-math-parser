@@ -2,9 +2,7 @@ use crate::lexer::{
     self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype,
 };
 use crate::node::{
-    build_assignment_node, build_conditional_node, build_function_declaration_node,
-    build_function_call_node, build_node, build_program_node, build_return_node,
-    build_statement_node, build_unary_node, Block, Expression,
+    Block, Expression, build_assignment_node, build_class_declaration_node, build_conditional_node, build_function_call_node, build_function_declaration_node, build_node, build_program_node, build_return_node, build_statement_node, build_unary_node
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -68,12 +66,45 @@ impl<'a> Parser<'a> {
 
     fn consume_statement_terminator(&mut self, stmt: &Expression) -> Result<(), ParserError<'a>> {
         match stmt {
-            Expression::IfConditional(_, _, _) | Expression::FunctionDeclaration(_) => Ok(()),
+            Expression::IfConditional(_, _, _) | Expression::FunctionDeclaration(_) | Expression::ClassDeclaration(_) => Ok(()),
             _ => {
                 self.digest(TokenType::EndOfstatement)?;
                 Ok(())
             }
         }
+    }
+
+    fn parse_class_declaration(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
+        self.digest(TokenType::ClassDeclaration)?;
+        let identifier = self.digest(TokenType::Symbol)?;
+        self.digest(TokenType::BlockStart)?;
+
+        let mut members = vec![];
+        let mut methods= vec![];
+        // Stuff
+        while let Some(token) = self.peek(None) {
+            if token.token_type == TokenType::Declaration {
+                members.push(self.parse_declaration()?);
+                self.digest(TokenType::EndOfstatement)?;
+                
+            }
+            else if token.token_type == TokenType::FunctionDeclaration {
+                methods.push(self.parse_function_declaration()?);
+            }
+            else {
+                break;
+            }
+        }
+
+        self.digest(TokenType::BlockEnd)?;
+
+        Ok(build_class_declaration_node(
+            identifier.value
+                    .ok_or_else(error_unexpected_empty_value)?
+                    .to_string(),
+            members,
+            methods
+        ))
     }
 
     fn parse_function_declaration(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
@@ -160,6 +191,7 @@ impl<'a> Parser<'a> {
             | TokenType::StringLiteral => Ok(self.parse_expression(0)?),
             TokenType::Declaration => Ok(self.parse_declaration()?),
             TokenType::FunctionDeclaration => Ok(self.parse_function_declaration()?),
+            TokenType::ClassDeclaration => Ok(self.parse_class_declaration()?),
             TokenType::ConditionalIf => Ok(self.parse_conditional()?),
             TokenType::Return => Ok(self.parse_return()?),
             _ => Err(error_unrecognized_token(token)),
