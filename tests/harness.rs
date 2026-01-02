@@ -1,7 +1,11 @@
 use std::cell::RefCell;
 
 use parser::{
-    interpreter::{methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::Value},
+    interpreter::{
+        methods::{NativeFnArgs, NativeFnReturn},
+        runtime_errors::RuntimeError,
+        value::Value,
+    },
     register_method,
 };
 

@@ -2,7 +2,7 @@ mod harness;
 
 use harness::{reset_assertions, take_assertions, AssertionRecord};
 use parser::{
-    interpreter::{Interpreter, runtime_errors::RuntimeError},
+    interpreter::{runtime_errors::RuntimeError, Interpreter},
     lexer, parser as ast_parser,
 };
 
@@ -62,6 +62,19 @@ mod tests {
         "#;
 
         expect_assertions(source, &["sum should equal 6"]);
+    }
+
+    #[test]
+    fn parses_parenthesized_member_access_statement() {
+        let source = r#"
+        let container = 42;
+        (container).to_string();
+        "#;
+
+        let mut token_parser = lexer::TokenParser::new(source);
+        let tokens = token_parser.parse().expect("lexer should succeed");
+        let mut parser = ast_parser::Parser::new(tokens);
+        parser.parse().expect("parser should succeed");
     }
 
     #[test]

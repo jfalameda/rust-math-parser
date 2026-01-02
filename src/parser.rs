@@ -194,7 +194,8 @@ impl<'a> Parser<'a> {
             | TokenType::BooleanLiteral
             | TokenType::Operator
             | TokenType::Symbol
-            | TokenType::StringLiteral => Ok(self.parse_expression(0)?),
+            | TokenType::StringLiteral
+            | TokenType::ParenthesisL => Ok(self.parse_expression(0)?),
             TokenType::Declaration => Ok(self.parse_declaration()?),
             TokenType::FunctionDeclaration => Ok(self.parse_function_declaration()?),
             TokenType::ClassDeclaration => Ok(self.parse_class_declaration()?),
@@ -405,6 +406,14 @@ impl<'a> Parser<'a> {
     ) -> Result<Box<Expression>, ParserError<'a>> {
         while self.peek_type_is(TokenType::MemberAccess) {
             self.digest(TokenType::MemberAccess)?;
+
+            // A member access must always be followed by a symbol
+            if !self.peek_type_is(TokenType::Symbol) {
+                let token = self.peek(None).ok_or_else(error_eof)?.clone();
+
+                return Err(error_unexpected_token(&token, &TokenType::Symbol));
+            }
+
             let right = self.parse_term()?;
             left = build_postfix_node(PostfixOperatorType::MemberAccess, left, right);
         }

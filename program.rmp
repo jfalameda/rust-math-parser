@@ -99,6 +99,8 @@ func sub(a, b) {
 
 println(sub(1, 2));
 
+(a).b;
+
 
 class ClassExample {
     let a = 1;
