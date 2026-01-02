@@ -436,7 +436,7 @@ impl<'a> Parser<'a> {
 
             // A member access must always be followed by a symbol
             if !self.peek_type_is(TokenType::Symbol) {
-                let token = self.peek(None).ok_or_else(error_eof)?.clone();
+                let token = self.peek(None).ok_or_else(error_eof)?;
 
                 return Err(error_unexpected_token(&token, &TokenType::Symbol));
             }
