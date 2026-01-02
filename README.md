@@ -96,6 +96,7 @@ println("Multiplication: " + multiply(1, 2));
 - Write tests
 - Implement mechanism on the interpreter to check for mandatory function arguments (consider semantic analysis)
 - Make functions first class citizens
+- Treat method call as a suffix operator
 - Check for undefined variables (also semantic analysis)
 - Implement assignment without declaration
 - Improve syntax errors

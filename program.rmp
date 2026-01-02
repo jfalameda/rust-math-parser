@@ -91,7 +91,7 @@ func sub(a, b) {
         return a - b;
     }
 
-    sub2(1);
+    sub2(1, 2);
     
     if (a)
         return ret;

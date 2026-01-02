@@ -107,6 +107,11 @@ pub enum OperatorType {
 }
 
 #[derive(PartialEq, Clone, Debug)]
+pub enum PostfixOperatorType {
+    MemberAccess
+}
+
+#[derive(PartialEq, Clone, Debug)]
 pub struct Token<'a> {
     pub start: usize,
     pub end: usize,

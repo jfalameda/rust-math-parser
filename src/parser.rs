@@ -1,8 +1,8 @@
 use crate::lexer::{
-    self, AdditiveOperatorSubtype, OperatorType, Token, TokenType, UnaryOperatorSubtype,
+    self, AdditiveOperatorSubtype, OperatorType, PostfixOperatorType, Token, TokenType, UnaryOperatorSubtype
 };
 use crate::node::{
-    Block, Expression, build_assignment_node, build_class_declaration_node, build_class_instantiation_node, build_conditional_node, build_function_call_node, build_function_declaration_node, build_node, build_program_node, build_return_node, build_statement_node, build_unary_node
+    Block, Expression, build_assignment_node, build_class_declaration_node, build_class_instantiation_node, build_conditional_node, build_function_call_node, build_function_declaration_node, build_node, build_postfix_node, build_program_node, build_return_node, build_statement_node, build_unary_node
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -248,18 +248,9 @@ impl<'a> Parser<'a> {
 
     fn parse_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError<'a>> {
         let token = self.peek(None).ok_or_else(error_eof)?;
-        let next = self.peek(Some(self.pos + 1));
 
         if token.token_type == TokenType::New {
             self.parse_class_instantiation()
-        }
-        else if token.token_type == TokenType::Symbol
-            && matches!(
-                next.map(|t| t.token_type.clone()),
-                Some(TokenType::ParenthesisL)
-            )
-        {
-            self.parse_function_call()
         } else {
             self.parse_binary_expression(precedence)
         }
@@ -279,16 +270,15 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn parse_function_call(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
-        let method_name = self.digest(TokenType::Symbol)?;
+    fn parse_function_call(&mut self, symbol: Token<'_>) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
         Ok(build_function_call_node(
-            method_name.value.ok_or_else(error_eof)?.to_string(),
+            symbol.value.ok_or_else(error_eof)?.to_string(),
             args,
-            method_name.line,
+            symbol.line,
         ))
     }
 
@@ -348,7 +338,7 @@ impl<'a> Parser<'a> {
     fn parse_term(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         let token = self.peek(None).ok_or_else(error_eof)?.clone();
 
-        match token.token_type {
+        let left = match token.token_type {
             TokenType::Operator => {
                 match token.operator_type {
                     Some(OperatorType::Additive(AdditiveOperatorSubtype::Sub)) => {
@@ -365,7 +355,15 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            TokenType::Symbol
+            TokenType::Symbol => {
+                let symbol = self.digest(TokenType::Symbol)?;
+                if self.peek_type_is(TokenType::ParenthesisL)
+                {
+                    self.parse_function_call(symbol)
+                } else {
+                    Ok(build_node(&token, None, None))
+                }
+            }
             | TokenType::StringLiteral
             | TokenType::BooleanLiteral
             | TokenType::NumeralLiteral(_) => {
@@ -381,6 +379,19 @@ impl<'a> Parser<'a> {
             }
 
             _ => Err(error_unrecognized_token(&token)),
+        }?;
+
+        // TODO: Make this cleaner
+        if self.peek_type_is(TokenType::MemberAccess) {
+            self.digest(TokenType::MemberAccess)?;
+
+            return Ok(build_postfix_node(
+                PostfixOperatorType::MemberAccess,
+                left,
+                self.parse_term()?)
+            )
         }
+
+        Ok(left)
     }
 }

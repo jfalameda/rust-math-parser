@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::lexer::{NumeralType, OperatorType, Token, TokenType, UnaryOperatorSubtype};
+use crate::lexer::{NumeralType, OperatorType, PostfixOperatorType, Token, TokenType, UnaryOperatorSubtype};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
@@ -55,6 +55,7 @@ pub enum Expression {
     Literal(Literal),
     BinaryOperation(Box<Expression>, OperatorType, Box<Expression>),
     UnaryOperation(OperatorType, Box<Expression>),
+    PostfixOperation(Box<Expression>, PostfixOperatorType, Box<Expression>),
     Program(Program), // Change to block?
     Statement(Box<Expression>),
     FunctionCall(FunctionCall),
@@ -194,6 +195,14 @@ pub fn build_node(
         TokenType::Symbol => Box::new(Expression::Identifier(Identifier { name: value })),
         _ => panic!("Unexpected token type to process when building node."),
     }
+}
+
+pub fn build_postfix_node(
+    operation_type: PostfixOperatorType,
+    left: Box<Expression>,
+    right: Box<Expression>,
+) -> Box<Expression> {
+    Box::new(Expression::PostfixOperation(left, operation_type, right))
 }
 
 pub fn build_unary_node(
