@@ -123,7 +123,7 @@ pub struct Token<'a> {
 }
 
 impl<'a> Token<'a> {
-    pub fn operator_predecende(self) -> (i32, bool) {
+    pub fn operator_predecende(&self) -> (i32, bool) {
         match self.operator_type {
             Some(OperatorType::Additive(_)) => (1, false),
             Some(OperatorType::Multiplicative(_)) => (2, false),

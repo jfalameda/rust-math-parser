@@ -327,7 +327,7 @@ impl<'a> Parser<'a> {
                 _ => break,
             };
 
-            let (op_precedence, is_right) = op_token.clone().operator_predecende();
+            let (op_precedence, is_right) = op_token.operator_predecende();
 
             if op_precedence < precedence {
                 break;
