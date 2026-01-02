@@ -354,7 +354,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_prefix_term(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
-        let token = self.peek(None).ok_or_else(error_eof)?.clone();
+        let token = self.peek(None).ok_or_else(error_eof)?;
 
         match token.token_type {
             TokenType::Operator => match token.operator_type {
@@ -375,20 +375,24 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
-        let token = self.peek(None).ok_or_else(error_eof)?.clone();
+        let token_type = self
+            .peek(None)
+            .map(|token| &token.token_type)
+            .ok_or_else(error_unexpected_empty_value)?;
 
-        match token.token_type {
+        match token_type {
             TokenType::Symbol => {
                 let symbol = self.digest(TokenType::Symbol)?;
                 if self.peek_type_is(TokenType::ParenthesisL) {
                     self.parse_function_call(symbol)
                 } else {
-                    Ok(build_node(&token, None, None))
+                    Ok(build_node(&symbol, None, None))
                 }
             }
-            TokenType::StringLiteral | TokenType::BooleanLiteral | TokenType::NumeralLiteral(_) => {
-                self.digest(token.token_type.clone())?;
-                Ok(build_node(&token, None, None))
+            TokenType::StringLiteral
+                | TokenType::BooleanLiteral
+                | TokenType::NumeralLiteral(_) => {
+                Ok(self.parse_literal()?)
             }
             TokenType::ParenthesisL => {
                 self.digest(TokenType::ParenthesisL)?;
@@ -396,7 +400,30 @@ impl<'a> Parser<'a> {
                 self.digest(TokenType::ParenthesisR)?;
                 Ok(expr)
             }
-            _ => Err(error_unrecognized_token(&token)),
+            _ => Err(error_unrecognized_token(
+                self.peek(None).ok_or_else(error_eof)?,
+            )),
+        }
+    }
+
+    fn parse_literal(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
+        let token = self.peek(None)
+            .ok_or_else(error_unexpected_empty_value)?;
+
+        match token.token_type {
+            TokenType::StringLiteral => {
+                let token = self.digest(TokenType::StringLiteral)?;
+                Ok(build_node(&token, None, None))
+            }
+            TokenType::BooleanLiteral => {
+                let token = self.digest(TokenType::BooleanLiteral)?;
+                Ok(build_node(&token, None, None))
+            }
+            TokenType::NumeralLiteral(numeral_type) => {
+                let token = self.digest(TokenType::NumeralLiteral(numeral_type))?;
+                Ok(build_node(&token, None, None))
+            }
+            _ => Err(error_unrecognized_token(token))
         }
     }
 

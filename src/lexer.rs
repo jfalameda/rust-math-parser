@@ -1,4 +1,4 @@
-use crate::{lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind}};
+use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
 use std::fmt;
 
@@ -8,7 +8,7 @@ pub enum NumeralType {
     Float,
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum TokenType {
     Operator,
     NumeralLiteral(NumeralType),
@@ -93,7 +93,7 @@ pub enum UnaryOperatorSubtype {
 #[derive(Debug, PartialEq, Clone)]
 pub enum BooleanOperatorSubtype {
     And,
-    Or
+    Or,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -108,7 +108,7 @@ pub enum OperatorType {
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum PostfixOperatorType {
-    MemberAccess
+    MemberAccess,
 }
 
 #[derive(PartialEq, Clone, Debug)]
