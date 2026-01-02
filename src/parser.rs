@@ -1,8 +1,12 @@
 use crate::lexer::{
-    self, AdditiveOperatorSubtype, OperatorType, PostfixOperatorType, Token, TokenType, UnaryOperatorSubtype
+    self, AdditiveOperatorSubtype, OperatorType, PostfixOperatorType, Token, TokenType,
+    UnaryOperatorSubtype,
 };
 use crate::node::{
-    Block, Expression, build_assignment_node, build_class_declaration_node, build_class_instantiation_node, build_conditional_node, build_function_call_node, build_function_declaration_node, build_node, build_postfix_node, build_program_node, build_return_node, build_statement_node, build_unary_node
+    build_assignment_node, build_class_declaration_node, build_class_instantiation_node,
+    build_conditional_node, build_function_call_node, build_function_declaration_node, build_node,
+    build_postfix_node, build_program_node, build_return_node, build_statement_node,
+    build_unary_node, Block, Expression,
 };
 use crate::parser_errors::{ParserError, ParserErrorKind};
 
@@ -11,8 +15,10 @@ pub struct Parser<'a> {
     tokens: Vec<lexer::Token<'a>>,
 }
 
-
-fn error_unexpected_token<'a>(token: &Token<'a>, expected_token_type: &TokenType) -> ParserError<'a> {
+fn error_unexpected_token<'a>(
+    token: &Token<'a>,
+    expected_token_type: &TokenType,
+) -> ParserError<'a> {
     ParserError {
         kind: ParserErrorKind::UnexpectedToken(expected_token_type.to_string(), token.clone()),
     }
@@ -66,7 +72,9 @@ impl<'a> Parser<'a> {
 
     fn consume_statement_terminator(&mut self, stmt: &Expression) -> Result<(), ParserError<'a>> {
         match stmt {
-            Expression::IfConditional(_, _, _) | Expression::FunctionDeclaration(_) | Expression::ClassDeclaration(_) => Ok(()),
+            Expression::IfConditional(_, _, _)
+            | Expression::FunctionDeclaration(_)
+            | Expression::ClassDeclaration(_) => Ok(()),
             _ => {
                 self.digest(TokenType::EndOfstatement)?;
                 Ok(())
@@ -80,18 +88,15 @@ impl<'a> Parser<'a> {
         self.digest(TokenType::BlockStart)?;
 
         let mut members = vec![];
-        let mut methods= vec![];
+        let mut methods = vec![];
         // Stuff
         while let Some(token) = self.peek(None) {
             if token.token_type == TokenType::Declaration {
                 members.push(self.parse_declaration()?);
                 self.digest(TokenType::EndOfstatement)?;
-                
-            }
-            else if token.token_type == TokenType::FunctionDeclaration {
+            } else if token.token_type == TokenType::FunctionDeclaration {
                 methods.push(self.parse_function_declaration()?);
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -99,11 +104,12 @@ impl<'a> Parser<'a> {
         self.digest(TokenType::BlockEnd)?;
 
         Ok(build_class_declaration_node(
-            identifier.value
-                    .ok_or_else(error_unexpected_empty_value)?
-                    .to_string(),
+            identifier
+                .value
+                .ok_or_else(error_unexpected_empty_value)?
+                .to_string(),
             members,
-            methods
+            methods,
         ))
     }
 
@@ -262,15 +268,18 @@ impl<'a> Parser<'a> {
         self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
-        
+
         Ok(build_class_instantiation_node(
             class_name.value.ok_or_else(error_eof)?.to_string(),
             args,
-            class_name.line)
-        )
+            class_name.line,
+        ))
     }
 
-    fn parse_function_call(&mut self, symbol: Token<'_>) -> Result<Box<Expression>, ParserError<'a>> {
+    fn parse_function_call(
+        &mut self,
+        symbol: Token<'_>,
+    ) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
@@ -305,7 +314,10 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
-    fn parse_binary_expression(&mut self, precedence: i32) -> Result<Box<Expression>, ParserError<'a>> {
+    fn parse_binary_expression(
+        &mut self,
+        precedence: i32,
+    ) -> Result<Box<Expression>, ParserError<'a>> {
         let mut left = self.parse_term()?;
 
         loop {
@@ -336,60 +348,65 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_term(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
+        let left = self.parse_prefix_term()?;
+        self.parse_postfix_chain(left)
+    }
+
+    fn parse_prefix_term(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         let token = self.peek(None).ok_or_else(error_eof)?.clone();
 
-        let left = match token.token_type {
-            TokenType::Operator => {
-                match token.operator_type {
-                    Some(OperatorType::Additive(AdditiveOperatorSubtype::Sub)) => {
-                        self.digest(TokenType::Operator)?; // consume '-'
-                        let literal = self.parse_term()?;
-                        Ok(build_unary_node(UnaryOperatorSubtype::Min, literal))
-                    }
-                    Some(OperatorType::Unary(UnaryOperatorSubtype::Not)) => {
-                        self.digest(TokenType::Operator)?;
-                        let literal = self.parse_term()?;
-                        Ok(build_unary_node(UnaryOperatorSubtype::Not, literal))
-                    }
-                    Some(_) | None => Err(error_unrecognized_token(&token)),
+        match token.token_type {
+            TokenType::Operator => match token.operator_type {
+                Some(OperatorType::Additive(AdditiveOperatorSubtype::Sub)) => {
+                    self.digest(TokenType::Operator)?;
+                    let literal = self.parse_term()?;
+                    Ok(build_unary_node(UnaryOperatorSubtype::Min, literal))
                 }
-            }
+                Some(OperatorType::Unary(UnaryOperatorSubtype::Not)) => {
+                    self.digest(TokenType::Operator)?;
+                    let literal = self.parse_term()?;
+                    Ok(build_unary_node(UnaryOperatorSubtype::Not, literal))
+                }
+                Some(_) | None => Err(error_unrecognized_token(&token)),
+            },
+            _ => self.parse_primary(),
+        }
+    }
 
+    fn parse_primary(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
+        let token = self.peek(None).ok_or_else(error_eof)?.clone();
+
+        match token.token_type {
             TokenType::Symbol => {
                 let symbol = self.digest(TokenType::Symbol)?;
-                if self.peek_type_is(TokenType::ParenthesisL)
-                {
+                if self.peek_type_is(TokenType::ParenthesisL) {
                     self.parse_function_call(symbol)
                 } else {
                     Ok(build_node(&token, None, None))
                 }
             }
-            | TokenType::StringLiteral
-            | TokenType::BooleanLiteral
-            | TokenType::NumeralLiteral(_) => {
-                self.digest(token.token_type.clone())?; // consume literal
+            TokenType::StringLiteral | TokenType::BooleanLiteral | TokenType::NumeralLiteral(_) => {
+                self.digest(token.token_type.clone())?;
                 Ok(build_node(&token, None, None))
             }
-
             TokenType::ParenthesisL => {
-                self.digest(TokenType::ParenthesisL)?; // consume '('
+                self.digest(TokenType::ParenthesisL)?;
                 let expr = self.parse_expression(0)?;
                 self.digest(TokenType::ParenthesisR)?;
                 Ok(expr)
             }
-
             _ => Err(error_unrecognized_token(&token)),
-        }?;
+        }
+    }
 
-        // TODO: Make this cleaner
-        if self.peek_type_is(TokenType::MemberAccess) {
+    fn parse_postfix_chain(
+        &mut self,
+        mut left: Box<Expression>,
+    ) -> Result<Box<Expression>, ParserError<'a>> {
+        while self.peek_type_is(TokenType::MemberAccess) {
             self.digest(TokenType::MemberAccess)?;
-
-            return Ok(build_postfix_node(
-                PostfixOperatorType::MemberAccess,
-                left,
-                self.parse_term()?)
-            )
+            let right = self.parse_term()?;
+            left = build_postfix_node(PostfixOperatorType::MemberAccess, left, right);
         }
 
         Ok(left)
