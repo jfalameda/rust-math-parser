@@ -58,26 +58,4 @@ impl<'a> Parser<'a> {
 
         Ok(build_function_call_node(method_name, args, location))
     }
-
-    pub(crate) fn parse_method_args(&mut self) -> Result<Vec<Expression>, ParserError<'a>> {
-        let mut args = vec![];
-
-        while let Some(token) = self.peek(None) {
-            if token.token_type == TokenType::ParenthesisR {
-                break;
-            }
-
-            args.push(*self.parse_expression(0)?);
-
-            if let Some(next) = self.peek(None) {
-                if next.token_type != TokenType::ParenthesisR {
-                    self.digest(TokenType::ArgumentSeparator)?;
-                }
-            } else {
-                return Err(error_eof());
-            }
-        }
-
-        Ok(args)
-    }
 }
