@@ -1,4 +1,9 @@
-use parser::{interpreter::Interpreter, lexer::TokenParser, parser::Parser as AstParser};
+use parser::{
+    ast::Expression,
+    interpreter::Interpreter,
+    lexer::{Token, TokenParser},
+    parser::Parser as AstParser,
+};
 use std::{env, fs, process};
 
 fn main() {
@@ -15,22 +20,9 @@ fn run() -> Result<(), String> {
     let program = fs::read_to_string(&file_name)
         .map_err(|_| format!("Invalid program file: {}", file_name))?;
 
-    let mut token_parser = TokenParser::new(&program);
-    let tokens = token_parser
-        .parse()
-        .map_err(|err| format!("Lexer error: {}", err))?;
-
-    let mut parser = AstParser::new(tokens);
-    let ast = parser
-        .parse()
-        .map_err(|err| format!("Parser error: {}", err))?;
-
-    let mut interpreter = Interpreter::new();
-    interpreter
-        .run(Some(ast.as_ref()))
-        .map_err(|err| format!("\nProgram exited \n {}", err))?;
-
-    Ok(())
+    lex(&program)
+        .and_then(parse_ast)
+        .and_then(|ast| interpret(ast.as_ref()))
 }
 
 fn resolve_program_path(args: &[String]) -> Result<String, String> {
@@ -41,4 +33,25 @@ fn resolve_program_path(args: &[String]) -> Result<String, String> {
     } else {
         Err("Program file is mandatory.".to_string())
     }
+}
+
+fn lex<'a>(program: &'a str) -> Result<Vec<Token<'a>>, String> {
+    let mut token_parser = TokenParser::new(program);
+    token_parser
+        .parse()
+        .map_err(|err| format!("Lexer error: {}", err))
+}
+
+fn parse_ast<'a>(tokens: Vec<Token<'a>>) -> Result<Box<Expression>, String> {
+    let mut parser = AstParser::new(tokens);
+    parser
+        .parse()
+        .map_err(|err| format!("Parser error: {}", err))
+}
+
+fn interpret(ast: &Expression) -> Result<(), String> {
+    let mut interpreter = Interpreter::new();
+    interpreter
+        .run(Some(ast))
+        .map_err(|err| format!("\nProgram exited \n {}", err))
 }

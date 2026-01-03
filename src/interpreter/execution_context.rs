@@ -96,6 +96,7 @@ impl ExecutionContext {
             // When returning we clone the value. No reference passing.
             *slot = Some(value.as_ref().clone());
         } else {
+            // We are not supposed to reach this point, thus using panic
             panic!("set_return_value called outside of a function");
         }
     }
