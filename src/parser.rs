@@ -55,11 +55,11 @@ impl<'a> Parser<'a> {
         matches!(self.peek(None), Some(t) if t.token_type == expected)
     }
 
-    fn digest(&mut self, expected: TokenType) -> Result<Token<'a>, ParserError<'a>> {
-        let token = self.peek(None).ok_or_else(error_eof)?.clone();
+    fn digest(&mut self, expected: TokenType) -> Result<&Token<'a>, ParserError<'a>> {
+        let token = self.tokens.get(self.pos).ok_or_else(error_eof)?;
 
         if token.token_type != expected {
-            return Err(error_unexpected_token(&token, &expected));
+            return Err(error_unexpected_token(token, &expected));
         }
 
         self.pos += 1;
@@ -84,7 +84,11 @@ impl<'a> Parser<'a> {
 
     fn parse_class_declaration(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::ClassDeclaration)?;
-        let identifier = self.digest(TokenType::Symbol)?;
+        let identifier_token = self.digest(TokenType::Symbol)?;
+        let class_name = identifier_token
+            .value
+            .ok_or_else(error_unexpected_empty_value)?
+            .to_string();
         self.digest(TokenType::BlockStart)?;
 
         let mut members = vec![];
@@ -103,20 +107,17 @@ impl<'a> Parser<'a> {
 
         self.digest(TokenType::BlockEnd)?;
 
-        Ok(build_class_declaration_node(
-            identifier
-                .value
-                .ok_or_else(error_unexpected_empty_value)?
-                .to_string(),
-            members,
-            methods,
-        ))
+        Ok(build_class_declaration_node(class_name, members, methods))
     }
 
     fn parse_function_declaration(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::FunctionDeclaration)?;
 
-        let identifier = self.digest(TokenType::Symbol)?;
+        let identifier_token = self.digest(TokenType::Symbol)?;
+        let identifier = identifier_token
+            .value
+            .ok_or_else(error_unexpected_empty_value)?
+            .to_string();
 
         self.digest(TokenType::ParenthesisL)?;
 
@@ -148,11 +149,6 @@ impl<'a> Parser<'a> {
         self.digest(TokenType::ParenthesisR)?;
 
         let block = self.parse_block_with_delimiters()?;
-
-        let identifier = identifier
-            .value
-            .ok_or_else(error_unexpected_empty_value)?
-            .to_string();
 
         Ok(build_function_declaration_node(identifier, args, block))
     }
@@ -208,13 +204,11 @@ impl<'a> Parser<'a> {
     }
     fn parse_declaration(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::Declaration)?; // consume "let"
-        let symbol = self.digest(TokenType::Symbol)?;
+        let symbol_token = self.digest(TokenType::Symbol)?;
+        let symbol_name = symbol_token.value.ok_or_else(error_eof)?.to_string();
         self.digest(TokenType::Assignment)?;
         let expr = self.parse_expression(0)?;
-        Ok(build_assignment_node(
-            symbol.value.ok_or_else(error_eof)?.to_string(),
-            expr,
-        ))
+        Ok(build_assignment_node(symbol_name, expr))
     }
 
     fn parse_return(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
@@ -265,31 +259,30 @@ impl<'a> Parser<'a> {
 
     fn parse_class_instantiation(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::New)?;
-        let class_name = self.digest(TokenType::Symbol)?;
+        let class_name_token = self.digest(TokenType::Symbol)?;
+        let class_name = class_name_token.value.ok_or_else(error_eof)?.to_string();
+        let class_location = class_name_token.line;
         self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
         Ok(build_class_instantiation_node(
-            class_name.value.ok_or_else(error_eof)?.to_string(),
+            class_name,
             args,
-            class_name.line,
+            class_location,
         ))
     }
 
     fn parse_function_call(
         &mut self,
-        symbol: Token<'_>,
+        method_name: String,
+        location: usize,
     ) -> Result<Box<Expression>, ParserError<'a>> {
         self.digest(TokenType::ParenthesisL)?;
         let args = self.parse_method_args()?;
         self.digest(TokenType::ParenthesisR)?;
 
-        Ok(build_function_call_node(
-            symbol.value.ok_or_else(error_eof)?.to_string(),
-            args,
-            symbol.line,
-        ))
+        Ok(build_function_call_node(method_name, args, location))
     }
 
     fn parse_method_args(&mut self) -> Result<Vec<Expression>, ParserError<'a>> {
@@ -322,8 +315,9 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_term()?;
 
         loop {
+            let op_index = self.pos;
             let op_token = match self.peek(None) {
-                Some(t) if t.token_type == TokenType::Operator => t.clone(),
+                Some(t) if t.token_type == TokenType::Operator => t,
                 _ => break,
             };
 
@@ -342,7 +336,11 @@ impl<'a> Parser<'a> {
             };
 
             let right = self.parse_expression(next_precedence)?;
-            left = build_node(&op_token, Some(left), Some(right));
+            let operator_token = self
+                .tokens
+                .get(op_index)
+                .expect("Operator token missing after digest");
+            left = build_node(operator_token, Some(left), Some(right));
         }
 
         Ok(left)
@@ -382,16 +380,23 @@ impl<'a> Parser<'a> {
 
         match token_type {
             TokenType::Symbol => {
-                let symbol = self.digest(TokenType::Symbol)?;
-                if self.peek_type_is(TokenType::ParenthesisL) {
-                    self.parse_function_call(symbol)
+                let next_is_call = matches!(
+                    self.tokens.get(self.pos + 1),
+                    Some(next) if next.token_type == TokenType::ParenthesisL
+                );
+                self.digest(TokenType::Symbol)?;
+                let symbol_index = self.pos - 1;
+                if next_is_call {
+                    let token = self.tokens.get(symbol_index).ok_or_else(error_eof)?;
+                    let method_name = token.value.ok_or_else(error_eof)?.to_string();
+                    let location = token.line;
+                    self.parse_function_call(method_name, location)
                 } else {
-                    Ok(build_node(&symbol, None, None))
+                    let token = self.tokens.get(symbol_index).ok_or_else(error_eof)?;
+                    Ok(build_node(token, None, None))
                 }
             }
-            TokenType::StringLiteral
-                | TokenType::BooleanLiteral
-                | TokenType::NumeralLiteral(_) => {
+            TokenType::StringLiteral | TokenType::BooleanLiteral | TokenType::NumeralLiteral(_) => {
                 Ok(self.parse_literal()?)
             }
             TokenType::ParenthesisL => {
@@ -407,23 +412,22 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_literal(&mut self) -> Result<Box<Expression>, ParserError<'a>> {
-        let token = self.peek(None)
-            .ok_or_else(error_unexpected_empty_value)?;
+        let token = self.peek(None).ok_or_else(error_unexpected_empty_value)?;
 
         match token.token_type {
             TokenType::StringLiteral => {
                 let token = self.digest(TokenType::StringLiteral)?;
-                Ok(build_node(&token, None, None))
+                Ok(build_node(token, None, None))
             }
             TokenType::BooleanLiteral => {
                 let token = self.digest(TokenType::BooleanLiteral)?;
-                Ok(build_node(&token, None, None))
+                Ok(build_node(token, None, None))
             }
             TokenType::NumeralLiteral(numeral_type) => {
                 let token = self.digest(TokenType::NumeralLiteral(numeral_type))?;
-                Ok(build_node(&token, None, None))
+                Ok(build_node(token, None, None))
             }
-            _ => Err(error_unrecognized_token(token))
+            _ => Err(error_unrecognized_token(token)),
         }
     }
 
@@ -438,7 +442,7 @@ impl<'a> Parser<'a> {
             if !self.peek_type_is(TokenType::Symbol) {
                 let token = self.peek(None).ok_or_else(error_eof)?;
 
-                return Err(error_unexpected_token(&token, &TokenType::Symbol));
+                return Err(error_unexpected_token(token, &TokenType::Symbol));
             }
 
             let right = self.parse_term()?;
