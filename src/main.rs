@@ -1,51 +1,44 @@
-use parser::{interpreter::Interpreter, lexer, parser as ast_parser};
-use std::{env, fs};
+use parser::{interpreter::Interpreter, lexer::TokenParser, parser::Parser as AstParser};
+use std::{env, fs, process};
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let mut program_file = args.get(1);
-    let file = "program.rmp".to_string();
-
-    if cfg!(debug_assertions) {
-        program_file = Some(&file);
-    } else if program_file.is_none() {
-        eprintln!("Program file is mandatory.");
-        std::process::exit(1);
+    if let Err(message) = run() {
+        eprintln!("{}", message);
+        process::exit(1);
     }
+}
 
-    let file_name = program_file.unwrap();
-    let program = match fs::read_to_string(file_name) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!("Invalid program file: {}", file_name);
-            std::process::exit(1);
-        }
-    };
+fn run() -> Result<(), String> {
+    let args: Vec<String> = env::args().collect();
+    let file_name = resolve_program_path(&args)?;
 
-    // Lexical analysis
-    let mut token_parser = lexer::TokenParser::new(&program);
-    let tokens = match token_parser.parse() {
-        Ok(t) => t,
-        Err(err) => {
-            eprintln!("Lexer error: {}", err);
-            std::process::exit(1);
-        }
-    };
+    let program = fs::read_to_string(&file_name)
+        .map_err(|_| format!("Invalid program file: {}", file_name))?;
 
-    // Parsing
-    let mut parser = ast_parser::Parser::new(tokens);
-    let ast = match parser.parse() {
-        Ok(ast) => ast,
-        Err(err) => {
-            eprintln!("Parser error: {}", err);
-            std::process::exit(1);
-        }
-    };
+    let mut token_parser = TokenParser::new(&program);
+    let tokens = token_parser
+        .parse()
+        .map_err(|err| format!("Lexer error: {}", err))?;
 
-    // Interpreting
+    let mut parser = AstParser::new(tokens);
+    let ast = parser
+        .parse()
+        .map_err(|err| format!("Parser error: {}", err))?;
+
     let mut interpreter = Interpreter::new();
-    if let Err(err) = interpreter.run(Some(ast.as_ref())) {
-        eprintln!("\nProgram exited \n {}", err);
-        std::process::exit(1);
+    interpreter
+        .run(Some(ast.as_ref()))
+        .map_err(|err| format!("\nProgram exited \n {}", err))?;
+
+    Ok(())
+}
+
+fn resolve_program_path(args: &[String]) -> Result<String, String> {
+    if let Some(program_file_name) = args.get(1) {
+        Ok(program_file_name.clone())
+    } else if cfg!(debug_assertions) {
+        Ok("program.rmp".to_string())
+    } else {
+        Err("Program file is mandatory.".to_string())
     }
 }
