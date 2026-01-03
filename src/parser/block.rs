@@ -1,5 +1,5 @@
 use crate::lexer::TokenType;
-use crate::node::{build_statement_node, Block};
+use crate::ast::{build_statement_node, Block};
 
 use super::{Parser, ParserError};
 

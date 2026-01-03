@@ -1,5 +1,5 @@
 use crate::lexer::TokenType;
-use crate::node::{build_assignment_node, build_conditional_node, build_return_node, Expression};
+use crate::ast::{build_assignment_node, build_conditional_node, build_return_node, Expression};
 
 use super::{error_eof, error_unrecognized_token, Parser, ParserError};
 

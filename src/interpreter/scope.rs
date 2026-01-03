@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::{interpreter::value::Value, node::FunctionDeclaration};
+use crate::{interpreter::value::Value, ast::FunctionDeclaration};
 
 pub type ScopeId = usize;
 

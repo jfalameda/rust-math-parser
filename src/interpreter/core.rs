@@ -7,7 +7,7 @@ use crate::lexer::{
     AdditiveOperatorSubtype, BooleanOperatorSubtype, CompOperatorSubtype,
     MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype,
 };
-use crate::node::{
+use crate::ast::{
     Block, Expression, FunctionCall, FunctionDeclaration, Identifier, Literal, Program,
 };
 pub enum ControlFlow {

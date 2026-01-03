@@ -9,7 +9,7 @@ mod statements;
 pub use errors::{ParserError, ParserErrorKind};
 
 use crate::lexer::{self, Token, TokenType};
-use crate::node::{build_program_node, Expression};
+use crate::ast::{build_program_node, Expression};
 
 pub struct Parser<'a> {
     pos: usize,

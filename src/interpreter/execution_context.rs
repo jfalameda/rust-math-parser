@@ -7,7 +7,7 @@ use crate::{
         scope::{ScopeArena, ScopeId},
         value::Value,
     },
-    node::FunctionDeclaration,
+    ast::FunctionDeclaration,
 };
 
 pub struct ExecutionContext {

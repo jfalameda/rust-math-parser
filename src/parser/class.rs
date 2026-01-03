@@ -1,5 +1,5 @@
 use crate::lexer::TokenType;
-use crate::node::{build_class_declaration_node, build_class_instantiation_node, Expression};
+use crate::ast::{build_class_declaration_node, build_class_instantiation_node, Expression};
 
 use super::{error_eof, error_unexpected_empty_value, Parser, ParserError};
 
