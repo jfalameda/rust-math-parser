@@ -1,10 +1,10 @@
+mod arguments;
 mod block;
 mod class;
 mod errors;
 mod expressions;
 mod functions;
 mod statements;
-mod arguments;
 
 pub use errors::{ParserError, ParserErrorKind};
 

@@ -1,4 +1,6 @@
-use crate::lexer_errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
+mod errors;
+
+pub use errors::{LexerInvalidTokenError, LexerInvalidTokenKind};
 
 use std::fmt;
 

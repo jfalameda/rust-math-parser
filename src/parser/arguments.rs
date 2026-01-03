@@ -1,5 +1,5 @@
 use crate::lexer::TokenType;
-use crate::node::{Expression};
+use crate::node::Expression;
 
 use super::{error_eof, Parser, ParserError};
 
