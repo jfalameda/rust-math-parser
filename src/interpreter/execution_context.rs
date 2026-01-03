@@ -91,7 +91,7 @@ impl ExecutionContext {
         self.function_depth > 0
     }
 
-    pub fn set_return_value(&mut self, value:Rc<Value>) {
+    pub fn set_return_value(&mut self, value: Rc<Value>) {
         if let Some(slot) = self.return_values.last_mut() {
             // When returning we clone the value. No reference passing.
             *slot = Some(value.as_ref().clone());

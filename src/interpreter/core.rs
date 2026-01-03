@@ -4,14 +4,15 @@ use super::methods::get_method;
 use super::value::Value;
 use crate::interpreter::{execution_context::ExecutionContext, runtime_errors::RuntimeError};
 use crate::lexer::{
-    AdditiveOperatorSubtype, BooleanOperatorSubtype, CompOperatorSubtype, MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype
+    AdditiveOperatorSubtype, BooleanOperatorSubtype, CompOperatorSubtype,
+    MultiplicativeOperatorSubtype, OperatorType, UnaryOperatorSubtype,
 };
 use crate::node::{
-    Block, Expression, FunctionDeclaration, Identifier, Literal, FunctionCall, Program,
+    Block, Expression, FunctionCall, FunctionDeclaration, Identifier, Literal, Program,
 };
 pub enum ControlFlow {
     Continue,
-    Break
+    Break,
 }
 
 pub struct Interpreter {
@@ -33,9 +34,7 @@ impl Interpreter {
     pub fn evaluate(&mut self, node: Option<&Expression>) -> Result<ControlFlow, RuntimeError> {
         if let Some(node_content) = node {
             match node_content {
-                Expression::Program(program) => {
-                    Ok(self.evaluate_program(program)?)
-                },
+                Expression::Program(program) => Ok(self.evaluate_program(program)?),
                 Expression::BinaryOperation(_, _, _) => {
                     self.evaluate_expression(node_content)?;
                     Ok(ControlFlow::Continue)
@@ -49,17 +48,16 @@ impl Interpreter {
                 }
                 Expression::Return(_) => {
                     self.evaluate_return(node_content)?;
-                    
+
                     return Ok(ControlFlow::Break);
-                },
+                }
                 Expression::FunctionDeclaration(function_declaration) => {
                     self.evaluate_function_definition(function_declaration)?;
                     Ok(ControlFlow::Continue)
                 }
                 _ => panic!("Unexpected AST node"),
             }
-        }
-        else {
+        } else {
             // When the program is finished the flow breaks.
             Ok(ControlFlow::Break)
         }
@@ -93,12 +91,16 @@ impl Interpreter {
                 ControlFlow::Break => {
                     break_invoked = true;
                     break;
-                },
-                ControlFlow::Continue => ()
+                }
+                ControlFlow::Continue => (),
             }
         }
         self.execution_context.restore_scope(parent_scope);
-        Ok(if break_invoked { ControlFlow::Break } else { ControlFlow::Continue })
+        Ok(if break_invoked {
+            ControlFlow::Break
+        } else {
+            ControlFlow::Continue
+        })
     }
 
     fn evaluate_statement(&mut self, expression: &Expression) -> Result<ControlFlow, RuntimeError> {
@@ -206,7 +208,7 @@ impl Interpreter {
             let result = result.map_err(|err| self.execution_context.attach_stack(err));
 
             self.execution_context.pop_frame();
-            
+
             result
         }
     }

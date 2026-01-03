@@ -1,6 +1,6 @@
 use std::{ops, rc::Rc};
 
-use crate::{interpreter::runtime_errors::RuntimeError};
+use crate::interpreter::runtime_errors::RuntimeError;
 
 // Integer values and float should be distinguished, also boolean properly
 // handled.
@@ -50,7 +50,9 @@ impl Value {
                 } else if let Ok(f) = s.parse::<f64>() {
                     Ok(Value::Float(f))
                 } else {
-                    Err(RuntimeError::new(format!("Unable to convert string '{}' to number", s).as_str()))
+                    Err(RuntimeError::new(
+                        format!("Unable to convert string '{}' to number", s).as_str(),
+                    ))
                 }
             }
         }
@@ -60,7 +62,9 @@ impl Value {
         match self.to_number()? {
             Value::Integer(i) => Ok(i),
             Value::Float(f) => Ok(f as i64),
-            other => Err(RuntimeError::new(format!("Expected numeric value, got {:?}", other).as_str())),
+            other => Err(RuntimeError::new(
+                format!("Expected numeric value, got {:?}", other).as_str(),
+            )),
         }
     }
 
@@ -69,7 +73,9 @@ impl Value {
         match self.to_number()? {
             Value::Integer(i) => Ok(i as f64),
             Value::Float(f) => Ok(f),
-            other => Err(RuntimeError::new(format!("Expected numeric value, got {:?}", other).as_str())),
+            other => Err(RuntimeError::new(
+                format!("Expected numeric value, got {:?}", other).as_str(),
+            )),
         }
     }
 
@@ -340,14 +346,8 @@ mod tests {
         let numeric_true = Value::Integer(10);
         let numeric_false = Value::Integer(0);
 
-        assert_eq!(
-            true_bool.and_value(&numeric_true),
-            Value::Boolean(true)
-        );
-        assert_eq!(
-            true_bool.and_value(&false_bool),
-            Value::Boolean(false)
-        );
+        assert_eq!(true_bool.and_value(&numeric_true), Value::Boolean(true));
+        assert_eq!(true_bool.and_value(&false_bool), Value::Boolean(false));
         assert_eq!(
             numeric_false.and_value(&numeric_true),
             Value::Boolean(false)

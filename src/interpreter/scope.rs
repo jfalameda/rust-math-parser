@@ -32,7 +32,12 @@ impl ScopeArena {
         self.scopes.len() - 1
     }
 
-    pub fn define_variable(&mut self, scope_id: ScopeId, name: impl Into<String>, value: Rc<Value>) {
+    pub fn define_variable(
+        &mut self,
+        scope_id: ScopeId,
+        name: impl Into<String>,
+        value: Rc<Value>,
+    ) {
         self.scopes[scope_id].variables.insert(name.into(), value);
     }
 

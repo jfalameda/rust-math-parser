@@ -75,7 +75,12 @@ macro_rules! takes_arguments {
                 $args.len()
             )));
         }
-        Ok(($args[0].clone(), $args[1].clone(), $args[2].clone(), $args[3].clone()))
+        Ok((
+            $args[0].clone(),
+            $args[1].clone(),
+            $args[2].clone(),
+            $args[3].clone(),
+        ))
     }};
     ($args:expr, 5) => {{
         if $args.len() != 5 {
@@ -93,7 +98,6 @@ macro_rules! takes_arguments {
         ))
     }};
 }
-
 
 #[macro_export]
 macro_rules! register_method {

@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
-use crate::lexer::{NumeralType, OperatorType, PostfixOperatorType, Token, TokenType, UnaryOperatorSubtype};
+use crate::lexer::{
+    NumeralType, OperatorType, PostfixOperatorType, Token, TokenType, UnaryOperatorSubtype,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
@@ -66,7 +68,7 @@ pub enum Expression {
     FunctionDeclaration(FunctionDeclaration),
     Return(Box<Expression>),
     IfConditional(Box<Expression>, Block, Option<Block>),
-    ClassDeclaration(ClassDeclaration)
+    ClassDeclaration(ClassDeclaration),
 }
 
 pub fn build_function_call_node(
@@ -148,7 +150,7 @@ pub fn build_class_declaration_node(
     Box::new(Expression::ClassDeclaration(ClassDeclaration {
         identifier: Identifier { name: identifier },
         members,
-        methods
+        methods,
     }))
 }
 

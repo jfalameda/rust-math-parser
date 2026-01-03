@@ -1,5 +1,9 @@
 use crate::{
-    interpreter::{methods::{NativeFnArgs, NativeFnReturn}, runtime_errors::RuntimeError, value::Value},
+    interpreter::{
+        methods::{NativeFnArgs, NativeFnReturn},
+        runtime_errors::RuntimeError,
+        value::Value,
+    },
     register_method, takes_arguments,
 };
 
